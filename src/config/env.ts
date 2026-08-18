@@ -59,7 +59,7 @@ export const env: EnvConfig = {
   uploadMaxSizeMb: parseInt(getEnv("UPLOAD_MAX_SIZE_MB", "10"), 10),
   whatsappSupportNumber: getEnv("WHATSAPP_SUPPORT_NUMBER", ""),
   supportEmail: getEnv("SUPPORT_EMAIL", "support@advenwarecareer.link"),
-  corsOrigin: getEnv("CORS_ORIGIN", "http://localhost:5173,http://localhost:3000,http://localhost:4000"),
+  corsOrigin: getEnv("CORS_ORIGIN", "http://localhost:5173,http://localhost:3000,http://localhost:4000,https://advenwareacl.onrender.com"),
   rateLimitWindowMs: parseInt(getEnv("RATE_LIMIT_WINDOW_MS", "900000"), 10),
   rateLimitMax: parseInt(getEnv("RATE_LIMIT_MAX", "100"), 10),
 };
