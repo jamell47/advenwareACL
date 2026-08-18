@@ -1,5 +1,5 @@
 {
-  "name": "acl-backend",
+   "name": "acl-backend",
   "version": "1.0.0",
   "description": "ADVENWARE CAREER LINK (ACL) - Student Attachment Placement Platform API",
   "main": "dist/server.js",
@@ -23,6 +23,9 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts"
   },
+  "prisma": {
+  "seed": "ts-node prisma/seed.ts"
+},
   "keywords": [
     "acl",
     "career-link",

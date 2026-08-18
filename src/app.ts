@@ -16,14 +16,28 @@ app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowedOrigins = env.corsOrigin.split(",").map((o) => o.trim());
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+      const allowedOrigins = env.corsOrigin
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean);
+
+      console.log("CORS Origin:", origin);
+      console.log("Allowed Origins:", allowedOrigins);
+
+      if (!origin) {
+        return callback(null, true);
       }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.error(`Blocked CORS origin: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 
