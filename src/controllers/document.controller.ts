@@ -146,9 +146,23 @@ export class DocumentController {
          data: stats,
        });
      } catch (error) {
-      next(error);
-    }
-  }
+       next(error);
+     }
+   }
+
+   static async getDocumentProgress(req: Request, res: Response, next: NextFunction) {
+     try {
+       const progress = await DocumentService.getDocumentProgress(req.user!.id);
+
+       res.status(200).json({
+         success: true,
+         message: "Document progress retrieved successfully",
+         data: progress,
+       });
+     } catch (error) {
+       next(error);
+     }
+   }
 
   static async getAdminDocuments(req: Request, res: Response, next: NextFunction) {
     try {

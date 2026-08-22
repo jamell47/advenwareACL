@@ -21,6 +21,15 @@ interface DocumentQueryParams {
 }
 
 export class DocumentService {
+  static REQUIRED_DOCUMENT_TYPES: DocumentType[] = [
+    DocumentType.NATIONAL_ID,
+    DocumentType.STUDENT_ID,
+    DocumentType.ATTACHMENT_LETTER,
+    DocumentType.INTRODUCTION_LETTER,
+    DocumentType.CV,
+    DocumentType.ACADEMIC_CERTIFICATE,
+  ];
+
   static async getAllDocuments(
     userId: string,
     params: DocumentQueryParams = {},
@@ -291,6 +300,44 @@ export class DocumentService {
       reuploadRequired,
       approvedCount: approved,
       totalCount: total,
+    };
+  }
+
+  static async getDocumentProgress(userId: string): Promise<any> {
+    const documents = await prisma.document.findMany({
+      where: { userId },
+      select: {
+        type: true,
+        status: true,
+        isRequired: true,
+      },
+    });
+
+    const requiredDocs = this.REQUIRED_DOCUMENT_TYPES.map((type) => {
+      const doc = documents.find((d) => d.type === type);
+      if (!doc) {
+        return { type, status: "NOT_UPLOADED", isRequired: true };
+      }
+      return { type, status: doc.status, isRequired: doc.isRequired };
+    });
+
+    const verifiedCount = requiredDocs.filter((d) => d.status === "APPROVED").length;
+    const pendingCount = requiredDocs.filter((d) => d.status === "PENDING_REVIEW").length;
+    const rejectedCount = requiredDocs.filter((d) => d.status === "REJECTED" || d.status === "REUPLOAD_REQUIRED").length;
+    const notUploadedCount = requiredDocs.filter((d) => d.status === "NOT_UPLOADED").length;
+
+    const progress = Math.round((verifiedCount / requiredDocs.length) * 100);
+
+    return {
+      progress,
+      documents: {
+        total: requiredDocs.length,
+        verified: verifiedCount,
+        pending: pendingCount,
+        rejected: rejectedCount,
+        notUploaded: notUploadedCount,
+      },
+      requiredDocuments: requiredDocs,
     };
   }
 

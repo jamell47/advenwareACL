@@ -33,6 +33,8 @@ router.get(
  */
 router.get("/stats", authenticate, DocumentController.getDocumentStats);
 
+router.get("/progress", authenticate, DocumentController.getDocumentProgress);
+
 /**
  * /documents:
  *   post:
