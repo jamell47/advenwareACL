@@ -123,6 +123,14 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email, user.role);
     const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
 
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
+
     return { user, accessToken, refreshToken };
   }
 
@@ -157,6 +165,14 @@ export class AuthService {
 
     const accessToken = this.generateAccessToken(user.id, user.email, user.role);
     const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
+
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
 
     return {
       user: {
