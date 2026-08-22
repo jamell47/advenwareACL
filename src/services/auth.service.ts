@@ -123,6 +123,11 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email, user.role);
     const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
 
+    await prisma.refreshToken.updateMany({
+      where: { userId: user.id },
+      data: { revoked: true },
+    });
+
     await prisma.refreshToken.create({
       data: {
         token: refreshToken,
@@ -165,6 +170,11 @@ export class AuthService {
 
     const accessToken = this.generateAccessToken(user.id, user.email, user.role);
     const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
+
+    await prisma.refreshToken.updateMany({
+      where: { userId: user.id },
+      data: { revoked: true },
+    });
 
     await prisma.refreshToken.create({
       data: {
