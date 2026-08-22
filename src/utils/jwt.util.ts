@@ -17,6 +17,7 @@ export class JwtUtil {
     const fullPayload: TokenPayload = {
       ...payload,
       type: "refresh",
+      jti: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     };
     return jwt.sign(fullPayload, env.jwtRefreshSecret, {
       expiresIn: env.jwtRefreshExpiresIn as jwt.SignOptions["expiresIn"],

@@ -123,9 +123,8 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email, user.role);
     const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
 
-    await prisma.refreshToken.updateMany({
+    await prisma.refreshToken.deleteMany({
       where: { userId: user.id },
-      data: { revoked: true },
     });
 
     await prisma.refreshToken.create({
@@ -171,9 +170,8 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email, user.role);
     const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
 
-    await prisma.refreshToken.updateMany({
+    await prisma.refreshToken.deleteMany({
       where: { userId: user.id },
-      data: { revoked: true },
     });
 
     await prisma.refreshToken.create({
