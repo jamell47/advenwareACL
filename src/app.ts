@@ -24,7 +24,7 @@ app.use(
       console.log("CORS Origin:", origin);
       console.log("Allowed Origins:", allowedOrigins);
 
-      if (!origin) {
+      if (!origin || origin === "null") {
         return callback(null, true);
       }
 

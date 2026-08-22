@@ -103,19 +103,92 @@ export class MessagingService {
       },
     });
 
-    const supportUser = await prisma.user.findFirst({
-      where: { role: "SUPPORT" as any },
+    if (data.type === "SUPPORT") {
+      const supportUser = await prisma.user.findFirst({
+        where: { role: "SUPPORT" as any },
+      });
+
+      if (supportUser) {
+        await prisma.conversationParticipant.create({
+          data: {
+            conversationId: conversation.id,
+            userId: supportUser.id,
+            role: ConversationParticipantRole.SUPPORT,
+          },
+        });
+      }
+    } else if (data.type === "AGENT") {
+      const student = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { agentId: true },
+      });
+
+      if (student?.agentId) {
+        await prisma.conversationParticipant.create({
+          data: {
+            conversationId: conversation.id,
+            userId: student.agentId,
+            role: ConversationParticipantRole.AGENT,
+          },
+        });
+
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { agentId: student.agentId },
+        });
+      }
+    }
+
+    return {
+      id: conversation.id,
+      subject: conversation.subject,
+      isResolved: conversation.isResolved,
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt,
+    };
+  }
+
+  static async createAgentConversation(agentId: string, studentId: string, subject?: string): Promise<any> {
+    const student = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { agentId: true, studentProfile: { select: { id: true } } },
     });
 
-    if (supportUser) {
-      await prisma.conversationParticipant.create({
-        data: {
-          conversationId: conversation.id,
-          userId: supportUser.id,
-          role: ConversationParticipantRole.SUPPORT,
-        },
-      });
+    if (!student || !student.studentProfile) {
+      throw new APIError("Student not found", 404, "STUDENT_NOT_FOUND");
     }
+
+    if (student.agentId !== agentId) {
+      throw new APIError("You can only message your own students", 403, "FORBIDDEN");
+    }
+
+    const existingConversation = await prisma.conversation.findFirst({
+      where: { studentId, agentId },
+    });
+
+    if (existingConversation) {
+      return {
+        id: existingConversation.id,
+        subject: existingConversation.subject,
+        isResolved: existingConversation.isResolved,
+        createdAt: existingConversation.createdAt,
+        updatedAt: existingConversation.updatedAt,
+      };
+    }
+
+    const conversation = await prisma.conversation.create({
+      data: {
+        studentId,
+        agentId,
+        subject: subject || `Conversation with student`,
+        participants: {
+          create: [
+            { userId: studentId, role: ConversationParticipantRole.STUDENT },
+            { userId: agentId, role: ConversationParticipantRole.AGENT },
+          ],
+        },
+      },
+    });
 
     return {
       id: conversation.id,

@@ -2,7 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../config/prisma";
 import { ApplicationService } from "../services/application.service";
 import { AuditLogService } from "../services/auditLog.service";
+import { NotificationService } from "../services/notification.service";
 import { APIError } from "../middleware/errorHandler";
+import { sanitizeQueryParams } from "../utils/query.util";
 
 export class ApplicationController {
   static async getMyApplication(req: Request, res: Response, next: NextFunction) {
@@ -89,13 +91,15 @@ export class ApplicationController {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
       const skip = (page - 1) * limit;
 
+      const cleanParams = sanitizeQueryParams(req.query);
+
       const where: any = {};
-      if (req.query.status) where.status = req.query.status;
-      if (req.query.search) {
+      if (cleanParams.status) where.status = cleanParams.status;
+      if (cleanParams.search) {
         where.OR = [
-          { user: { firstName: { contains: req.query.search as string, mode: "insensitive" } } },
-          { user: { lastName: { contains: req.query.search as string, mode: "insensitive" } } },
-          { user: { email: { contains: req.query.search as string, mode: "insensitive" } } },
+          { user: { firstName: { contains: cleanParams.search as string, mode: "insensitive" } } },
+          { user: { lastName: { contains: cleanParams.search as string, mode: "insensitive" } } },
+          { user: { email: { contains: cleanParams.search as string, mode: "insensitive" } } },
         ];
       }
 
@@ -107,7 +111,6 @@ export class ApplicationController {
           orderBy: { createdAt: "desc" },
           include: {
             user: {
-              select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
               include: { studentProfile: true },
             },
             placement: true,

@@ -2,6 +2,8 @@ import { Router } from "express";
 import { AdminController } from "../controllers/admin.controller";
 import { authenticate } from "../middleware/auth";
 import { requireAdmin } from "../middleware/adminAuth";
+import { validate } from "../middleware/validation";
+import { CreateAgentSchema, CreateStudentSchema } from "../schemas/admin.schema";
 
 const router = Router();
 
@@ -159,6 +161,17 @@ router.get("/settings", AdminController.getSystemSettings);
 
 /**
  * @swagger
+ * /admin/dashboard/charts:
+ *   get:
+ *     summary: Get dashboard chart data
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/dashboard/charts", AdminController.getDashboardCharts);
+
+/**
+ * @swagger
  * /admin/settings/{key}:
  *   put:
  *     summary: Update system setting
@@ -167,5 +180,25 @@ router.get("/settings", AdminController.getSystemSettings);
  *       - bearerAuth: []
  */
 router.put("/settings/:key", AdminController.updateSystemSetting);
+
+/**
+ * /admin/agents:
+ *   post:
+ *     summary: Create a new agent
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/agents", authenticate, requireAdmin("SUPER_ADMIN"), validate(CreateAgentSchema), AdminController.createAgent);
+
+/**
+ * /admin/students:
+ *   post:
+ *     summary: Create a new student
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/students", authenticate, requireAdmin("SUPER_ADMIN"), validate(CreateStudentSchema), AdminController.createStudent);
 
 export default router;

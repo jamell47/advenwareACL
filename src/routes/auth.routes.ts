@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { AuthController } from "../controllers/auth.controller";
 import { validate } from "../middleware/validation";
+import { authenticate } from "../middleware/auth";
 import {
   RegisterSchema,
   LoginSchema,
@@ -8,8 +9,23 @@ import {
   ForgotPasswordSchema,
   ResetPasswordSchema,
 } from "../schemas/auth.schema";
+import { APIError } from "../middleware/errorHandler";
 
 const router = Router();
+
+router.post("/register", (req, res, next) => {
+  try {
+    const parsed = RegisterSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const message = parsed.error.errors.map((e) => e.message).join(", ");
+      return next(new APIError(message, 400, "VALIDATION_ERROR"));
+    }
+    req.body = parsed.data;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}, AuthController.register);
 
 /**
  * @swagger
@@ -79,7 +95,6 @@ const router = Router();
  *       409:
  *         description: Email or phone already registered
  */
-router.post("/register", validate(RegisterSchema), AuthController.register);
 
 /**
  * @swagger
@@ -106,5 +121,16 @@ router.post("/logout", AuthController.logout);
 router.post("/forgot-password", validate(ForgotPasswordSchema), AuthController.forgotPassword);
 
 router.post("/reset-password", validate(ResetPasswordSchema), AuthController.resetPassword);
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get the authenticated user's profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/me", authenticate, AuthController.getMe);
 
 export default router;

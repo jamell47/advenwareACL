@@ -1,12 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "../services/auth.service";
 import { AuditLogService } from "../services/auditLog.service";
-import { env } from "../config/env";
 
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await AuthService.register(req.body);
+      const body = { ...req.body };
+      delete body.confirmPassword;
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("Register request body:", JSON.stringify(body, null, 2));
+      }
+
+      const result = await AuthService.register(body);
 
       await AuditLogService.log(
         "USER_REGISTERED",
@@ -136,16 +142,15 @@ export class AuthController {
   }
 
   static async getMe(req: Request, res: Response, next: NextFunction) {
-    res.status(200).json({
-      success: true,
-      message: "User profile retrieved successfully",
-      data: {
-        user: {
-          id: req.user!.id,
-          email: req.user!.email,
-          role: req.user!.role,
-        },
-      },
-    });
+    try {
+      const user = await AuthService.getMe(req.user!.id);
+      res.status(200).json({
+        success: true,
+        message: "User profile retrieved successfully",
+        data: { user },
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 }

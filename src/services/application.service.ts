@@ -72,6 +72,10 @@ export class ApplicationService {
   }
 
   static async createApplication(userId: string, data: CreateApplicationData): Promise<any> {
+    if (!data) {
+      throw new APIError("Application data is required", 400, "INVALID_DATA");
+    }
+
     const existing = await prisma.attachmentApplication.findFirst({
       where: { userId },
     });

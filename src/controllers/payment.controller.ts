@@ -2,7 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../config/prisma";
 import { PaymentService } from "../services/payment.service";
 import { AuditLogService } from "../services/auditLog.service";
+import { NotificationService } from "../services/notification.service";
 import { APIError } from "../middleware/errorHandler";
+import { sanitizeQueryParams } from "../utils/query.util";
 
 export class PaymentController {
   static async getMyPayments(req: Request, res: Response, next: NextFunction) {
@@ -39,15 +41,17 @@ export class PaymentController {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
       const skip = (page - 1) * limit;
 
+      const cleanParams = sanitizeQueryParams(req.query);
+
       const where: any = {};
-      if (req.query.status) where.status = req.query.status;
-      if (req.query.search) {
+      if (cleanParams.status) where.status = cleanParams.status;
+      if (cleanParams.search) {
         where.OR = [
-          { user: { firstName: { contains: req.query.search as string, mode: "insensitive" } } },
-          { user: { lastName: { contains: req.query.search as string, mode: "insensitive" } } },
-          { user: { email: { contains: req.query.search as string, mode: "insensitive" } } },
-          { mpesaReceiptNumber: { contains: req.query.search as string, mode: "insensitive" } },
-          { transactionId: { contains: req.query.search as string, mode: "insensitive" } },
+          { user: { firstName: { contains: cleanParams.search as string, mode: "insensitive" } } },
+          { user: { lastName: { contains: cleanParams.search as string, mode: "insensitive" } } },
+          { user: { email: { contains: cleanParams.search as string, mode: "insensitive" } } },
+          { mpesaReceiptNumber: { contains: cleanParams.search as string, mode: "insensitive" } },
+          { transactionId: { contains: cleanParams.search as string, mode: "insensitive" } },
         ];
       }
 
@@ -59,8 +63,19 @@ export class PaymentController {
           orderBy: { createdAt: "desc" },
           include: {
             user: {
-              select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
-              include: { studentProfile: true },
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phoneNumber: true,
+                studentProfile: {
+                  select: {
+                    institution: true,
+                    course: true,
+                  },
+                },
+              },
             },
             placement: true,
           },
@@ -69,7 +84,31 @@ export class PaymentController {
       ]);
 
       const formatted = payments.map((p) => ({
-        ...p,
+        id: p.id,
+        userId: p.userId,
+        placementId: p.placementId,
+        amount: p.amount,
+        currency: p.currency,
+        method: p.method,
+        status: p.status,
+        mpesaPhoneNumber: p.mpesaPhoneNumber,
+        mpesaReceiptNumber: p.mpesaReceiptNumber,
+        transactionId: p.transactionId,
+        checkoutRequestId: p.checkoutRequestId,
+        confirmedAt: p.confirmedAt,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        placement: p.placement
+          ? {
+              id: p.placement.id,
+              organizationName: p.placement.organizationName,
+              positionTitle: p.placement.positionTitle,
+              location: p.placement.location,
+              startDate: p.placement.startDate,
+              endDate: p.placement.endDate,
+              status: p.placement.status,
+            }
+          : null,
         user: p.user
           ? {
               id: p.user.id,

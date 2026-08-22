@@ -9,14 +9,6 @@ import { UploadDocumentSchema, DocumentQueryParamsSchema } from "../schemas/docu
 const router = Router();
 
 /**
- * @swagger
- * tags:
- *   name: Documents
- *   description: Document management and upload
- */
-
-/**
- * @swagger
  * /documents:
  *   get:
  *     summary: Get all documents for the authenticated student
@@ -32,7 +24,6 @@ router.get(
 );
 
 /**
- * @swagger
  * /documents/stats:
  *   get:
  *     summary: Get document statistics
@@ -43,7 +34,6 @@ router.get(
 router.get("/stats", authenticate, DocumentController.getDocumentStats);
 
 /**
- * @swagger
  * /documents:
  *   post:
  *     summary: Upload a new document
@@ -60,40 +50,6 @@ router.post(
 );
 
 /**
- * @swagger
- * /documents/{id}:
- *   get:
- *     summary: Get a document by ID
- *     tags: [Documents]
- *     security:
- *       - bearerAuth: []
- */
-router.get("/:id", authenticate, DocumentController.getDocumentById);
-
-/**
- * @swagger
- * /documents/{id}:
- *   delete:
- *     summary: Delete a document
- *     tags: [Documents]
- *     security:
- *       - bearerAuth: []
- */
-router.delete("/:id", authenticate, DocumentController.deleteDocument);
-
-/**
- * @swagger
- * /documents/{id}/download:
- *   get:
- *     summary: Download a document
- *     tags: [Documents]
- *     security:
- *       - bearerAuth: []
- */
-router.get("/:id/download", authenticate, DocumentController.downloadDocument);
-
-/**
- * @swagger
  * /documents/admin:
  *   get:
  *     summary: Get all documents (admin access - no user filter)
@@ -109,7 +65,36 @@ router.get("/admin", authenticate, (req, res, next) => {
 }, DocumentController.getAdminDocuments);
 
 /**
- * @swagger
+ * /documents/{id}:
+ *   get:
+ *     summary: Get a document by ID
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/:id", authenticate, DocumentController.getDocumentById);
+
+/**
+ * /documents/{id}:
+ *   delete:
+ *     summary: Delete a document
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.delete("/:id", authenticate, DocumentController.deleteDocument);
+
+/**
+ * /documents/{id}/download:
+ *   get:
+ *     summary: Download a document
+ *     tags: [Documents]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/:id/download", authenticate, DocumentController.downloadDocument);
+
+/**
  * /documents/{id}/approve:
  *   post:
  *     summary: Approve a document (admin)
@@ -130,7 +115,6 @@ router.post(
 );
 
 /**
- * @swagger
  * /documents/{id}/reject:
  *   post:
  *     summary: Reject a document (admin)
@@ -151,7 +135,6 @@ router.post(
 );
 
 /**
- * @swagger
  * /documents/{id}/reupload:
  *   post:
  *     summary: Request document re-upload (admin)

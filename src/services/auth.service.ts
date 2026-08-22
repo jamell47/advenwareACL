@@ -2,7 +2,7 @@ import { prisma } from "../config/prisma";
 import { BcryptUtil } from "../utils/bcrypt.util";
 import { JwtUtil } from "../utils/jwt.util";
 import { APIError } from "../middleware/errorHandler";
-import { UserRole, UserStatus } from "@prisma/client";
+import { UserRole, UserStatus, Gender, IDType } from "@prisma/client";
 
 interface RegisterData {
   firstName: string;
@@ -12,8 +12,8 @@ interface RegisterData {
   email: string;
   dateOfBirth: Date;
   nationality: string;
-  gender?: string;
-  idType: string;
+  gender?: Gender;
+  idType?: IDType;
   idNumber: string;
   institution: string;
   course: string;
@@ -68,6 +68,13 @@ export class AuthService {
 
     const passwordHash = await BcryptUtil.hashPassword(data.password);
 
+    const toDate = (value: any): Date | undefined => {
+      if (!value) return undefined;
+      if (value instanceof Date) return value;
+      const date = new Date(value);
+      return isNaN(date.getTime()) ? undefined : date;
+    };
+
     const user = await prisma.user.create({
       data: {
         email: data.email,
@@ -81,22 +88,22 @@ export class AuthService {
         isActive: true,
         studentProfile: {
           create: {
-            dateOfBirth: data.dateOfBirth,
-            nationality: data.nationality,
-            gender: data.gender as any,
-            idNumber: data.idNumber,
-            idType: data.idType as any,
-            institution: data.institution,
-            course: data.course,
-            department: data.department,
-            currentYear: data.currentYear,
-            studentRegistrationNumber: data.studentRegistrationNumber,
-            expectedGraduation: data.expectedGraduation,
-            preferredStartDate: data.preferredStartDate,
-            preferredEndDate: data.preferredEndDate,
-            preferredLocation: data.preferredLocation,
-            preferredIndustry: data.preferredIndustry,
-            preferredPlacementArea: data.preferredPlacementArea,
+            dateOfBirth: toDate(data.dateOfBirth) || undefined,
+            nationality: data.nationality || undefined,
+            gender: data.gender || undefined,
+            idNumber: data.idNumber || undefined,
+            idType: data.idType || undefined,
+            institution: data.institution || undefined,
+            course: data.course || undefined,
+            department: data.department || undefined,
+            currentYear: data.currentYear || undefined,
+            studentRegistrationNumber: data.studentRegistrationNumber || undefined,
+            expectedGraduation: toDate(data.expectedGraduation),
+            preferredStartDate: toDate(data.preferredStartDate),
+            preferredEndDate: toDate(data.preferredEndDate),
+            preferredLocation: data.preferredLocation || undefined,
+            preferredIndustry: data.preferredIndustry || undefined,
+            preferredPlacementArea: data.preferredPlacementArea || undefined,
             profileCompleteness: 0,
           },
         },
@@ -250,5 +257,37 @@ export class AuthService {
       where: { id: user.id },
       data: { passwordHash },
     });
+  }
+
+  static async getMe(userId: string): Promise<any> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        studentProfile: true,
+        agentProfile: { include: { organization: true } },
+      },
+    });
+
+    if (!user) {
+      throw new APIError("User not found", 404, "USER_NOT_FOUND");
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      middleName: user.middleName,
+      lastName: user.lastName,
+      phoneNumber: user.phoneNumber,
+      profileImage: user.profileImage,
+      role: user.role,
+      status: user.status,
+      isActive: user.isActive,
+      agentId: user.agentId,
+      studentProfile: user.studentProfile,
+      agentProfile: user.agentProfile,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 }

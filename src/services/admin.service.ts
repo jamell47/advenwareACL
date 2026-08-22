@@ -3,6 +3,8 @@ import { AuditLogService } from "./auditLog.service";
 import { NotificationService } from "./notification.service";
 import { APIError } from "../middleware/errorHandler";
 import { UserRole, UserStatus, DocumentStatus, ApplicationStatus, PlacementStatus, PaymentStatus, CommissionStatus } from "@prisma/client";
+import { BcryptUtil } from "../utils/bcrypt.util";
+import { sanitizeQueryParams } from "../utils/query.util";
 
 interface PaginatedResult<T> {
   data: T[];
@@ -69,6 +71,69 @@ export class AdminService {
     };
   }
 
+  static async getDashboardCharts(): Promise<any> {
+    const [
+      usersByRole,
+      commissionsByStatus,
+      paymentsByStatus,
+      studentsByMonthRaw,
+      paidStudentsCount,
+    ] = await Promise.all([
+      prisma.user.groupBy({
+        by: ["role"],
+        _count: { id: true },
+        where: { role: { in: [UserRole.STUDENT, UserRole.AGENT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.FINANCE, UserRole.PLACEMENT_ADMIN, UserRole.DOCUMENT_ADMIN, UserRole.SUPPORT] } },
+      }),
+      prisma.commission.groupBy({
+        by: ["status"],
+        _count: { id: true },
+        _sum: { amount: true },
+      }),
+      prisma.payment.groupBy({
+        by: ["status"],
+        _count: { id: true },
+        _sum: { amount: true },
+      }),
+      prisma.$queryRaw`
+        SELECT DATE_FORMAT(createdAt, '%Y-%m') as month, COUNT(*) as count
+        FROM users
+        WHERE role = 'STUDENT' AND createdAt >= DATE_FORMAT(NOW(), '%Y-01-01')
+        GROUP BY month
+        ORDER BY month ASC
+      `,
+      prisma.user.count({
+        where: {
+          role: UserRole.STUDENT,
+          payments: { some: { status: "SUCCESSFUL", amount: { gte: 1500 } } },
+        },
+      }),
+    ]);
+
+    const studentsByMonth = (studentsByMonthRaw as any[]).map((item) => ({
+      month: item.month,
+      count: Number(item.count),
+    }));
+
+    return {
+      usersByRole: usersByRole.map((item) => ({
+        name: item.role,
+        value: item._count.id,
+      })),
+      commissionsByStatus: commissionsByStatus.map((item) => ({
+        name: item.status,
+        value: item._sum.amount || 0,
+        count: item._count.id,
+      })),
+      paymentsByStatus: paymentsByStatus.map((item) => ({
+        name: item.status,
+        value: item._sum.amount || 0,
+        count: item._count.id,
+      })),
+      studentsByMonth,
+      paidStudentsCount,
+    };
+  }
+
   static async getStudents(params: {
     page?: number;
     limit?: number;
@@ -82,38 +147,40 @@ export class AdminService {
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
 
+    const cleanParams = sanitizeQueryParams(params);
+
     const where: any = {
       role: UserRole.STUDENT,
     };
 
-    if (params.search) {
+    if (cleanParams.search) {
       where.OR = [
-        { firstName: { contains: params.search, mode: "insensitive" } },
-        { lastName: { contains: params.search, mode: "insensitive" } },
-        { email: { contains: params.search, mode: "insensitive" } },
-        { phoneNumber: { contains: params.search, mode: "insensitive" } },
+        { firstName: { contains: cleanParams.search, mode: "insensitive" } },
+        { lastName: { contains: cleanParams.search, mode: "insensitive" } },
+        { email: { contains: cleanParams.search, mode: "insensitive" } },
+        { phoneNumber: { contains: cleanParams.search, mode: "insensitive" } },
       ];
     }
 
-    if (params.status) {
-      where.status = params.status;
+    if (cleanParams.status) {
+      where.status = cleanParams.status;
     }
 
-    if (params.institution) {
+    if (cleanParams.institution) {
       where.studentProfile = {
-        institution: { contains: params.institution, mode: "insensitive" },
+        institution: { contains: cleanParams.institution, mode: "insensitive" },
       };
     }
 
-    if (params.course) {
+    if (cleanParams.course) {
       where.studentProfile = {
         ...where.studentProfile,
-        course: { contains: params.course, mode: "insensitive" },
+        course: { contains: cleanParams.course, mode: "insensitive" },
       };
     }
 
-    if (params.agentId) {
-      where.agentId = params.agentId;
+    if (cleanParams.agentId) {
+      where.agentId = cleanParams.agentId;
     }
 
     const [students, total] = await Promise.all([
@@ -321,19 +388,21 @@ export class AdminService {
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
 
+    const cleanParams = sanitizeQueryParams(params);
+
     const adminRoles = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.FINANCE, UserRole.PLACEMENT_ADMIN, UserRole.DOCUMENT_ADMIN, UserRole.SUPPORT];
     const where: any = { role: { in: adminRoles } };
 
-    if (params.search) {
+    if (cleanParams.search) {
       where.OR = [
-        { firstName: { contains: params.search, mode: "insensitive" } },
-        { lastName: { contains: params.search, mode: "insensitive" } },
-        { email: { contains: params.search, mode: "insensitive" } },
+        { firstName: { contains: cleanParams.search, mode: "insensitive" } },
+        { lastName: { contains: cleanParams.search, mode: "insensitive" } },
+        { email: { contains: cleanParams.search, mode: "insensitive" } },
       ];
     }
 
-    if (params.status) {
-      where.status = params.status;
+    if (cleanParams.status) {
+      where.status = cleanParams.status;
     }
 
     const [admins, total] = await Promise.all([
@@ -417,5 +486,201 @@ export class AdminService {
       data: logs,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  static async createAgent(data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    middleName?: string;
+    phoneNumber?: string;
+    password: string;
+    organizationId?: string;
+    commissionRate?: number;
+    createdBy: string;
+  }): Promise<any> {
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: [{ email: data.email }, { phoneNumber: data.phoneNumber }].filter(Boolean) as any },
+      select: { id: true, email: true, phoneNumber: true, role: true },
+    });
+
+    if (existingUser) {
+      if (existingUser.email === data.email) {
+        throw new APIError("Email already registered", 409, "EMAIL_EXISTS");
+      }
+      if (existingUser.phoneNumber === data.phoneNumber) {
+        throw new APIError("Phone number already registered", 409, "PHONE_EXISTS");
+      }
+    }
+
+    const passwordHash = await BcryptUtil.hashPassword(data.password);
+
+    const agentProfileData: any = {
+      isApproved: true,
+      commissionRate: data.commissionRate || 500,
+    };
+    if (data.organizationId) {
+      agentProfileData.organizationId = data.organizationId;
+    }
+
+    const agent = await prisma.user.create({
+      data: {
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        passwordHash,
+        firstName: data.firstName,
+        middleName: data.middleName,
+        lastName: data.lastName,
+        role: UserRole.AGENT,
+        status: UserStatus.ACTIVE,
+        isActive: true,
+        agentProfile: {
+          create: agentProfileData,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        agentProfile: true,
+      },
+    });
+
+    await AuditLogService.log(
+      "AGENT_CREATED",
+      data.createdBy,
+      "User",
+      agent.id,
+      `Agent ${agent.email} created by admin ${data.createdBy}`,
+    );
+
+    await NotificationService.createNotification({
+      userId: agent.id,
+      type: "SYSTEM",
+      title: "Account Created",
+      message: "Your agent account has been created. You can now log in.",
+      data: { agentId: agent.id },
+    });
+
+    return agent;
+  }
+
+  static async createStudent(data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    middleName?: string;
+    phoneNumber?: string;
+    password: string;
+    dateOfBirth: Date;
+    nationality: string;
+    gender?: string;
+    idNumber: string;
+    idType: string;
+    institution: string;
+    course: string;
+    department?: string;
+    currentYear?: string;
+    studentRegistrationNumber?: string;
+    expectedGraduation?: Date;
+    preferredStartDate?: Date;
+    preferredEndDate?: Date;
+    preferredLocation?: string;
+    preferredIndustry?: string;
+    preferredPlacementArea?: string;
+    agentId?: string;
+    createdBy: string;
+  }): Promise<any> {
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: [{ email: data.email }, { phoneNumber: data.phoneNumber }].filter(Boolean) as any },
+      select: { id: true, email: true, phoneNumber: true, role: true },
+    });
+
+    if (existingUser) {
+      if (existingUser.email === data.email) {
+        throw new APIError("Email already registered", 409, "EMAIL_EXISTS");
+      }
+      if (existingUser.phoneNumber === data.phoneNumber) {
+        throw new APIError("Phone number already registered", 409, "PHONE_EXISTS");
+      }
+    }
+
+    const passwordHash = await BcryptUtil.hashPassword(data.password);
+
+    const studentData: any = {
+      email: data.email,
+      phoneNumber: data.phoneNumber,
+      passwordHash,
+      firstName: data.firstName,
+      middleName: data.middleName,
+      lastName: data.lastName,
+      role: UserRole.STUDENT,
+      status: UserStatus.ACTIVE,
+      isActive: true,
+      studentProfile: {
+        create: {
+          dateOfBirth: data.dateOfBirth,
+          nationality: data.nationality,
+          gender: data.gender as any,
+          idNumber: data.idNumber,
+          idType: data.idType as any,
+          institution: data.institution,
+          course: data.course,
+          department: data.department,
+          currentYear: data.currentYear,
+          studentRegistrationNumber: data.studentRegistrationNumber,
+          expectedGraduation: data.expectedGraduation,
+          preferredStartDate: data.preferredStartDate,
+          preferredEndDate: data.preferredEndDate,
+          preferredLocation: data.preferredLocation,
+          preferredIndustry: data.preferredIndustry,
+          preferredPlacementArea: data.preferredPlacementArea,
+          profileCompleteness: 100,
+        },
+      },
+    };
+
+    if (data.agentId) {
+      studentData.agentId = data.agentId;
+    }
+
+    const student = await prisma.user.create({
+      data: studentData,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        agentId: true,
+        studentProfile: true,
+      },
+    });
+
+    await AuditLogService.log(
+      "STUDENT_CREATED",
+      data.createdBy,
+      "User",
+      student.id,
+      `Student ${student.email} created by admin ${data.createdBy}`,
+    );
+
+    await NotificationService.createNotification({
+      userId: student.id,
+      type: "SYSTEM",
+      title: "Account Created",
+      message: "Your student account has been created. You can now log in.",
+      data: { studentId: student.id },
+    });
+
+    return student;
   }
 }

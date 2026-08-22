@@ -4,6 +4,7 @@ import { AuditLogService } from "./auditLog.service";
 import { NotificationService } from "./notification.service";
 import { UserRole, CommissionStatus, WithdrawalStatus, PlacementStatus } from "@prisma/client";
 import { BcryptUtil } from "../utils/bcrypt.util";
+import { sanitizeQueryParams } from "../utils/query.util";
 
 interface PaginatedResult<T> {
   data: T[];
@@ -78,19 +79,21 @@ export class AgentService {
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
 
+    const cleanParams = sanitizeQueryParams(params);
+
     const where: any = { role: UserRole.AGENT };
 
-    if (params.search) {
+    if (cleanParams.search) {
       where.OR = [
-        { firstName: { contains: params.search, mode: "insensitive" } },
-        { lastName: { contains: params.search, mode: "insensitive" } },
-        { email: { contains: params.search, mode: "insensitive" } },
-        { phoneNumber: { contains: params.search, mode: "insensitive" } },
+        { firstName: { contains: cleanParams.search, mode: "insensitive" } },
+        { lastName: { contains: cleanParams.search, mode: "insensitive" } },
+        { email: { contains: cleanParams.search, mode: "insensitive" } },
+        { phoneNumber: { contains: cleanParams.search, mode: "insensitive" } },
       ];
     }
 
-    if (params.status) {
-      where.status = params.status;
+    if (cleanParams.status) {
+      where.status = cleanParams.status;
     }
 
     const [agents, total] = await Promise.all([
@@ -113,13 +116,13 @@ export class AgentService {
 
     const agentIds = agents.map((a) => a.id);
     const placementCounts = await prisma.placement.groupBy({
-      where: { userId: { in: agentIds.length > 0 ? agentIds : undefined } },
+      where: { userId: { in: agentIds.length > 0 ? agentIds : [] } },
       by: ["userId"],
       _count: { _all: true },
     });
 
     const commissionsAgg = await prisma.commission.groupBy({
-      where: { agentId: { in: agentIds.length > 0 ? agentIds : undefined } },
+      where: { agentId: { in: agentIds.length > 0 ? agentIds : [] } },
       by: ["agentId", "status"],
       _sum: { amount: true },
     });

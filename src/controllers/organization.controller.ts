@@ -3,15 +3,17 @@ import { prisma } from "../config/prisma";
 import { OrganizationService } from "../services/organization.service";
 import { AuditLogService } from "../services/auditLog.service";
 import { NotificationService } from "../services/notification.service";
+import { sanitizeQueryParams } from "../utils/query.util";
 
 export class OrganizationController {
   static async getOrganizations(req: Request, res: Response, next: NextFunction) {
     try {
+      const cleanParams = sanitizeQueryParams(req.query);
       const result = await OrganizationService.getOrganizations({
         page: req.query.page ? parseInt(req.query.page as string, 10) : undefined,
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-        search: req.query.search as string | undefined,
-        status: req.query.status as string | undefined,
+        search: cleanParams.search as string | undefined,
+        status: cleanParams.status as string | undefined,
       });
       res.status(200).json({ success: true, message: "Organizations retrieved", data: result.data, meta: result.meta });
     } catch (error) {

@@ -7,7 +7,7 @@ import { APIError } from "../middleware/errorHandler";
 export class DocumentController {
   static async getAllDocuments(req: Request, res: Response, next: NextFunction) {
     try {
-      const { type, status, page, limit } = req.query;
+      const { type, status, page, limit } = req.query || {};
       const result = await DocumentService.getAllDocuments(req.user!.id, {
         type: type as any,
         status: status as any,
@@ -152,7 +152,7 @@ export class DocumentController {
 
   static async getAdminDocuments(req: Request, res: Response, next: NextFunction) {
     try {
-      const { type, status, page, limit } = req.query;
+      const { type, status, page, limit } = req.query || {};
       const result = await DocumentService.getAdminDocuments({
         type: type as any,
         status: status as any,

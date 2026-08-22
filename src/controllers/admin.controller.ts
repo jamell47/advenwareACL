@@ -5,6 +5,8 @@ import { AuditLogService } from "../services/auditLog.service";
 import { SystemSettingService } from "../services/systemSetting.service";
 import { BcryptUtil } from "../utils/bcrypt.util";
 import { ROLE_PERMISSIONS } from "../utils/permissions";
+import { CreateAgentSchema, CreateStudentSchema } from "../schemas/admin.schema";
+import { validate } from "../middleware/validation";
 
 export class AdminController {
   static async getDashboard(req: Request, res: Response, next: NextFunction) {
@@ -210,6 +212,39 @@ export class AdminController {
     try {
       const setting = await SystemSettingService.updateSetting(req.params.key, req.body.value, req.user!.id);
       res.status(200).json({ success: true, message: "Setting updated", data: setting });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getDashboardCharts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const charts = await AdminService.getDashboardCharts();
+      res.status(200).json({ success: true, message: "Dashboard charts retrieved", data: charts });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createAgent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const agent = await AdminService.createAgent({
+        ...req.body,
+        createdBy: req.user!.id,
+      });
+      res.status(201).json({ success: true, message: "Agent created successfully", data: agent });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createStudent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const student = await AdminService.createStudent({
+        ...req.body,
+        createdBy: req.user!.id,
+      });
+      res.status(201).json({ success: true, message: "Student created successfully", data: student });
     } catch (error) {
       next(error);
     }

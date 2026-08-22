@@ -4,6 +4,7 @@ import { StorageService } from "../utils/storage.util";
 import { DocumentType, DocumentStatus } from "@prisma/client";
 import { AuditLogService } from "./auditLog.service";
 import { NotificationService } from "./notification.service";
+import { sanitizeQueryParams } from "../utils/query.util";
 
 interface UploadDocumentData {
   type: DocumentType;
@@ -298,9 +299,11 @@ export class DocumentService {
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
 
+    const cleanParams = sanitizeQueryParams(params);
+
     const where: any = {};
-    if (params.type) where.type = params.type;
-    if (params.status) where.status = params.status;
+    if (cleanParams.type) where.type = cleanParams.type;
+    if (cleanParams.status) where.status = cleanParams.status;
 
     const [documents, total] = await Promise.all([
       prisma.document.findMany({

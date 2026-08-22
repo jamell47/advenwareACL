@@ -4,7 +4,7 @@ import { NotificationService } from "../services/notification.service";
 export class NotificationController {
   static async getMyNotifications(req: Request, res: Response, next: NextFunction) {
     try {
-      const { isRead, page, limit } = req.query;
+      const { isRead, page, limit } = req.query || {};
 
       const result = await NotificationService.getMyNotifications(req.user!.id, {
         isRead: isRead !== undefined ? isRead === "true" : undefined,

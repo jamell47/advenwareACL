@@ -110,13 +110,13 @@ async function main() {
 
   const agentManager = await prisma.user.upsert({
     where: { email: "agent.manager@advenware.com" },
-    update: { role: UserRole.AGENT_MANAGER, status: UserStatus.ACTIVE, isActive: true, agentId: null },
+    update: { role: UserRole.AGENT, status: UserStatus.ACTIVE, isActive: true, agentId: null },
     create: {
       email: "agent.manager@advenware.com",
       firstName: "Agent",
       lastName: "Manager",
       passwordHash: await hashPassword(DEV_PASSWORD),
-      role: UserRole.AGENT_MANAGER,
+      role: UserRole.AGENT,
       status: UserStatus.ACTIVE,
       isActive: true,
       studentProfile: { create: { institution: "ADVENWARE", course: "Agent Management" } },
@@ -126,13 +126,13 @@ async function main() {
 
   const partnershipAdmin = await prisma.user.upsert({
     where: { email: "partnerships@advenware.com" },
-    update: { role: UserRole.PARTNERSHIP_ADMIN, status: UserStatus.ACTIVE, isActive: true },
+    update: { role: UserRole.ADMIN, status: UserStatus.ACTIVE, isActive: true },
     create: {
       email: "partnerships@advenware.com",
       firstName: "Partnership",
       lastName: "Admin",
       passwordHash: await hashPassword(DEV_PASSWORD),
-      role: UserRole.PARTNERSHIP_ADMIN,
+      role: UserRole.ADMIN,
       status: UserStatus.ACTIVE,
       isActive: true,
       studentProfile: { create: { institution: "ADVENWARE", course: "Partnerships" } },
@@ -140,7 +140,7 @@ async function main() {
   });
   console.log("Partnership Admin:", partnershipAdmin.email);
 
-  const organizations = [];
+  const organizations: any[] = [];
   const orgNames = [
     { name: "TechCorp Kenya", industry: "Technology", location: "Nairobi, Kenya", slots: 10 },
     { name: "BankPro Ltd", industry: "Finance", location: "Nairobi, Kenya", slots: 8 },
@@ -152,40 +152,49 @@ async function main() {
   ];
 
   for (const orgData of orgNames) {
-    const org = await prisma.organization.upsert({
+    const existing = await prisma.organization.findFirst({
       where: { name: orgData.name },
-      update: {
-        industry: orgData.industry,
-        location: orgData.location,
-        totalSlots: orgData.slots,
-        availableSlots: Math.floor(orgData.slots / 2),
-        status: "ACTIVE",
-      },
-      create: {
-        name: orgData.name,
-        industry: orgData.industry,
-        location: orgData.location,
-        contactPerson: "HR Manager",
-        phone: "254700000000",
-        email: `hr@${orgData.name.toLowerCase().replace(/\s/g, "")}.com`,
-        totalSlots: orgData.slots,
-        availableSlots: Math.floor(orgData.slots / 2),
-        description: `${orgData.name} - ${orgData.industry} company in ${orgData.location}`,
-        status: "ACTIVE",
-      },
     });
+    let org;
+    if (existing) {
+      org = await prisma.organization.update({
+        where: { id: existing.id },
+        data: {
+          industry: orgData.industry,
+          location: orgData.location,
+          totalSlots: orgData.slots,
+          availableSlots: Math.floor(orgData.slots / 2),
+          status: "ACTIVE",
+        },
+      });
+    } else {
+      org = await prisma.organization.create({
+        data: {
+          name: orgData.name,
+          industry: orgData.industry,
+          location: orgData.location,
+          contactPerson: "HR Manager",
+          phone: "254700000000",
+          email: `hr@${orgData.name.toLowerCase().replace(/\s/g, "")}.com`,
+          totalSlots: orgData.slots,
+          availableSlots: Math.floor(orgData.slots / 2),
+          description: `${orgData.name} - ${orgData.industry} company in ${orgData.location}`,
+          status: "ACTIVE",
+        },
+      });
+    }
     organizations.push(org);
     console.log("Organization:", org.name);
   }
 
-  const agents = [];
+  const agents: any[] = [];
   const agentNames = [
     { first: "James", last: "Ochieng", email: "agent1@advenware.com", phone: "254711000001" },
     { first: "Mary", last: "Adhiambo", email: "agent2@advenware.com", phone: "254711000002" },
     { first: "David", last: "Mutiso", email: "agent3@advenware.com", phone: "254711000003" },
   ];
 
-  const agentProfiles = [];
+  const agentProfiles: any[] = [];
   for (let i = 0; i < agentNames.length; i++) {
     const data = agentNames[i];
     const agent = await prisma.user.upsert({
@@ -208,6 +217,7 @@ async function main() {
           },
         },
       },
+      include: { agentProfile: true },
     });
     agents.push(agent);
 
@@ -221,7 +231,7 @@ async function main() {
 
   const institutions = ["University of Nairobi", "Kenya Methodist University", "Strathmore University", "JKUAT", "Moi University", "KEMU", "Daystar University"];
   const courses = ["Computer Science", "Information Technology", "Software Engineering", "Business Administration", "Finance", "Mass Communication", "Nursing"];
-  const applicationStatuses = [ApplicationStatus.UNDER_REVIEW, ApplicationStatus.APPROVED, ApplicationStatus.SEARCHING, ApplicationStatus.MATCHED, ApplicationStatus.PLACEMENT_CONFIRMED];
+  const applicationStatuses = [ApplicationStatus.UNDER_REVIEW, ApplicationStatus.APPROVED, ApplicationStatus.SEARCHING, ApplicationStatus.MATCHED, ApplicationStatus.PLACEMENT_CONFIRMED, ApplicationStatus.REJECTED];
   const documentTypes = [
     DocumentType.NATIONAL_ID,
     DocumentType.ATTACHMENT_LETTER,
@@ -287,15 +297,15 @@ async function main() {
           },
         },
       },
+      include: { studentProfile: true },
     });
 
     createdStudents++;
 
     const appStatus = applicationStatuses[i % applicationStatuses.length];
-    const application = await prisma.attachmentApplication.create({
-      data: {
-        userId: student.id,
-        studentProfileId: student.studentProfile?.id,
+    const application = await prisma.attachmentApplication.upsert({
+      where: { studentProfileId: student.studentProfile!.id },
+      update: {
         preferredStartDate: new Date(2024, 5, 1),
         preferredEndDate: new Date(2024, 7, 31),
         preferredLocation: "Nairobi, Kenya",
@@ -304,7 +314,23 @@ async function main() {
         coverLetter: `Dear Hiring Manager, I am Student${i} seeking an attachment opportunity...`,
         status: appStatus,
         createdAt: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)),
-        ...(appStatus !== ApplicationStatus.DRAFT && appStatus !== ApplicationStatus.UNDER_REVIEW
+        ...(appStatus !== ApplicationStatus.UNDER_REVIEW
+          ? { reviewedBy: operationsAdmin.id, reviewedAt: new Date() }
+          : {}),
+        ...(appStatus === ApplicationStatus.REJECTED ? { adminNotes: "Insufficient qualifications" } : {}),
+      },
+      create: {
+        userId: student.id,
+        studentProfileId: student.studentProfile!.id,
+        preferredStartDate: new Date(2024, 5, 1),
+        preferredEndDate: new Date(2024, 7, 31),
+        preferredLocation: "Nairobi, Kenya",
+        preferredIndustry: "Technology",
+        preferredPlacementArea: "Software Development",
+        coverLetter: `Dear Hiring Manager, I am Student${i} seeking an attachment opportunity...`,
+        status: appStatus,
+        createdAt: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)),
+        ...(appStatus !== ApplicationStatus.UNDER_REVIEW
           ? { reviewedBy: operationsAdmin.id, reviewedAt: new Date() }
           : {}),
         ...(appStatus === ApplicationStatus.REJECTED ? { adminNotes: "Insufficient qualifications" } : {}),
@@ -350,8 +376,28 @@ async function main() {
       const org = organizations[(i - 4) % organizations.length];
       const placementStatus = i <= 7 ? PlacementStatus.CONFIRMED : PlacementStatus.MATCHED;
 
-      const placement = await prisma.placement.create({
-        data: {
+      const placement = await prisma.placement.upsert({
+        where: { applicationId: application.id },
+        update: {
+          userId: student.id,
+          organizationId: org.id,
+          organizationName: org.name,
+          department: `${course} Department`,
+          positionTitle: course === "Computer Science" ? "Software Development Intern" : course === "Business Administration" ? "Business Analyst Intern" : "IT Support Intern",
+          location: org.location,
+          supervisorName: "John Smith",
+          supervisorPhone: "254700000100",
+          supervisorEmail: `supervisor@${org.name.toLowerCase().replace(/\s/g, "")}.com`,
+          startDate: new Date(2024, 5, 15),
+          endDate: new Date(2024, 8, 15),
+          status: placementStatus,
+          placementFee: 1500,
+          feeAmount: 1500,
+          commissionAmount: 500,
+          matchedAt: placementStatus !== PlacementStatus.CONFIRMED ? new Date() : undefined,
+          confirmedAt: placementStatus === PlacementStatus.CONFIRMED ? new Date() : undefined,
+        },
+        create: {
           userId: student.id,
           applicationId: application.id,
           organizationId: org.id,
@@ -377,20 +423,49 @@ async function main() {
       if (placement.status === PlacementStatus.CONFIRMED) {
         placedStudents++;
 
-        const commission = await prisma.commission.create({
-          data: {
-            placementId: placement.id,
-            agentId: student.agentId,
-            amount: 500,
-            currency: "KES",
-            status: CommissionStatus.ELIGIBLE,
-            eligibleAt: new Date(),
-          },
+        const existingCommission = await prisma.commission.findFirst({
+          where: { placementId: placement.id },
         });
+
+        let commission;
+        if (existingCommission) {
+          commission = await prisma.commission.update({
+            where: { id: existingCommission.id },
+            data: {
+              agentId: student.agentId!,
+              amount: 500,
+              currency: "KES",
+              status: CommissionStatus.ELIGIBLE,
+              eligibleAt: new Date(),
+            },
+          });
+        } else {
+          commission = await prisma.commission.create({
+            data: {
+              placementId: placement.id,
+              agentId: student.agentId!,
+              amount: 500,
+              currency: "KES",
+              status: CommissionStatus.ELIGIBLE,
+              eligibleAt: new Date(),
+            },
+          });
+        }
         createdCommissions++;
 
-        await prisma.payment.create({
-          data: {
+        await prisma.payment.upsert({
+          where: { placementId: placement.id },
+          update: {
+            userId: student.id,
+            amount: 1500,
+            currency: "KES",
+            method: "MPESA",
+            status: i <= 6 ? PaymentStatus.SUCCESSFUL : PaymentStatus.PENDING,
+            mpesaReceiptNumber: i <= 6 ? `MP${student.id.slice(0, 8)}${i}` : null,
+            transactionId: i <= 6 ? `TXN${student.id.slice(0, 8)}` : null,
+            confirmedAt: i <= 6 ? new Date() : null,
+          },
+          create: {
             userId: student.id,
             placementId: placement.id,
             amount: 1500,
@@ -464,7 +539,6 @@ async function main() {
             ],
           },
         },
-        skipDuplicates: true,
       });
 
       await prisma.notification.create({

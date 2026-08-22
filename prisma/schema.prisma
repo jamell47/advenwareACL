@@ -16,6 +16,8 @@ enum UserRole {
   PLACEMENT_ADMIN
   DOCUMENT_ADMIN
   SUPER_ADMIN
+  AGENT_MANAGER
+  PARTNERSHIP_ADMIN
 }
 
 enum UserStatus {
@@ -74,6 +76,8 @@ enum PlacementStatus {
   SEARCHING
   MATCHED
   CONFIRMED
+  ACTIVE
+  COMPLETED
   REJECTED
   CANCELLED
 }
@@ -388,15 +392,16 @@ model Conversation {
   isResolved   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  lastMessageId DateTime?
+  lastMessageId String? @unique
 
    participants ConversationParticipant[]
    messages     Message[]
+   lastMessage  Message?   @relation("LastMessage", fields: [lastMessageId], references: [id])
 
-  @@index([studentId])
-  @@index([agentId])
-  @@index([supportId])
-  @@map("conversations")
+   @@index([studentId])
+   @@index([agentId])
+   @@index([supportId])
+   @@map("conversations")
 }
 
 model ConversationParticipant {
@@ -429,6 +434,7 @@ model Message {
   conversation Conversation @relation(fields: [conversationId], references: [id])
   sender      User          @relation("SentMessages", fields: [senderId], references: [id])
   receiver    User          @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  lastMessageOf Conversation? @relation("LastMessage")
 
   @@index([conversationId])
   @@index([senderId])

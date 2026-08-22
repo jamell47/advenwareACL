@@ -2,6 +2,7 @@ import { prisma } from "../config/prisma";
 import { APIError } from "../middleware/errorHandler";
 import { AuditLogService } from "./auditLog.service";
 import { OrganizationStatus } from "@prisma/client";
+import { sanitizeQueryParams } from "../utils/query.util";
 
 interface PaginatedResult<T> {
   data: T[];
@@ -24,18 +25,20 @@ export class OrganizationService {
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
 
+    const cleanParams = sanitizeQueryParams(params);
+
     const where: any = {};
 
-    if (params.search) {
+    if (cleanParams.search) {
       where.OR = [
-        { name: { contains: params.search, mode: "insensitive" } },
-        { industry: { contains: params.search, mode: "insensitive" } },
-        { location: { contains: params.search, mode: "insensitive" } },
+        { name: { contains: cleanParams.search, mode: "insensitive" } },
+        { industry: { contains: cleanParams.search, mode: "insensitive" } },
+        { location: { contains: cleanParams.search, mode: "insensitive" } },
       ];
     }
 
-    if (params.status) {
-      where.status = params.status;
+    if (cleanParams.status) {
+      where.status = cleanParams.status;
     }
 
     const [organizations, total] = await Promise.all([

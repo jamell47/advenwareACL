@@ -5,6 +5,7 @@ import { NotificationService } from "./notification.service";
 import { env } from "../config/env";
 import { DarajaService } from "./daraja.service";
 import { WithdrawalStatus, CommissionStatus } from "@prisma/client";
+import { sanitizeQueryParams } from "../utils/query.util";
 
 interface PaginatedResult<T> {
   data: T[];
@@ -28,9 +29,11 @@ export class WithdrawalService {
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
 
+    const cleanParams = sanitizeQueryParams(params);
+
     const where: any = {};
-    if (params.status) where.status = params.status;
-    if (params.agentId) where.agentId = params.agentId;
+    if (cleanParams.status) where.status = cleanParams.status;
+    if (cleanParams.agentId) where.agentId = cleanParams.agentId;
 
     const [withdrawals, total] = await Promise.all([
       prisma.withdrawal.findMany({

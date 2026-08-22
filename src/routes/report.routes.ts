@@ -23,37 +23,37 @@ router.use(authenticate);
  *       - bearerAuth: []
  */
 router.get("/students", (req, res, next) => {
-  if (["SUPER_ADMIN", "PLACEMENT_ADMIN", "AGENT_MANAGER"].includes(req.user!.role)) return next();
+  if (["SUPER_ADMIN", "PLACEMENT_ADMIN", "AGENT_MANAGER", "ADMIN"].includes(req.user!.role)) return next();
   res.status(403).json({ success: false, message: "Forbidden" });
 }, ReportController.studentRegistrations);
 
 router.get("/agents", (req, res, next) => {
-  if (["SUPER_ADMIN", "AGENT_MANAGER"].includes(req.user!.role)) return next();
+  if (["SUPER_ADMIN", "AGENT_MANAGER", "ADMIN"].includes(req.user!.role)) return next();
   res.status(403).json({ success: false, message: "Forbidden" });
 }, ReportController.agentPerformance);
 
 router.get("/placements", (req, res, next) => {
-  if (["SUPER_ADMIN", "PLACEMENT_ADMIN"].includes(req.user!.role)) return next();
+  if (["SUPER_ADMIN", "PLACEMENT_ADMIN", "ADMIN"].includes(req.user!.role)) return next();
   res.status(403).json({ success: false, message: "Forbidden" });
 }, ReportController.placements);
 
 router.get("/payments", (req, res, next) => {
-  if (["SUPER_ADMIN", "FINANCE_ADMIN"].includes(req.user!.role)) return next();
+  if (["SUPER_ADMIN", "FINANCE", "ADMIN"].includes(req.user!.role)) return next();
   res.status(403).json({ success: false, message: "Forbidden" });
 }, ReportController.payments);
 
 router.get("/commissions", (req, res, next) => {
-  if (["SUPER_ADMIN", "FINANCE_ADMIN", "AGENT_MANAGER"].includes(req.user!.role)) return next();
+  if (["SUPER_ADMIN", "FINANCE", "AGENT_MANAGER", "ADMIN"].includes(req.user!.role)) return next();
   res.status(403).json({ success: false, message: "Forbidden" });
 }, ReportController.commissions);
 
 router.get("/withdrawals", (req, res, next) => {
-  if (["SUPER_ADMIN", "FINANCE_ADMIN", "AGENT_MANAGER"].includes(req.user!.role)) return next();
+  if (["SUPER_ADMIN", "FINANCE", "AGENT_MANAGER", "ADMIN"].includes(req.user!.role)) return next();
   res.status(403).json({ success: false, message: "Forbidden" });
 }, ReportController.withdrawals);
 
 router.get("/documents", (req, res, next) => {
-  if (["SUPER_ADMIN", "DOCUMENT_ADMIN"].includes(req.user!.role)) return next();
+  if (["SUPER_ADMIN", "DOCUMENT_ADMIN", "ADMIN"].includes(req.user!.role)) return next();
   res.status(403).json({ success: false, message: "Forbidden" });
 }, ReportController.documents);
 

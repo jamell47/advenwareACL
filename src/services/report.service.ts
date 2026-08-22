@@ -32,12 +32,12 @@ export class ReportService {
     } : {};
 
     const whereClause = params.startDate || params.endDate
-      ? `AND "createdAt" >= '${params.startDate}' AND "createdAt" <= '${params.endDate}'`
+      ? `AND createdAt >= '${params.startDate}' AND createdAt <= '${params.endDate}'`
       : '';
 
     const byDay: any[] = await prisma.$queryRawUnsafe(`
-      SELECT DATE_TRUNC('day', "createdAt") as day, COUNT(*)::int as count
-      FROM "users"
+      SELECT DATE_FORMAT(createdAt, '%Y-%m-%d') as day, COUNT(*) as count
+      FROM users
       WHERE role = 'STUDENT'
       ${whereClause}
       GROUP BY day
