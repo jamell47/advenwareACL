@@ -136,6 +136,13 @@ router.post(
   DocumentController.rejectDocument,
 );
 
+router.post(
+  "/:id/reupload",
+  authenticate,
+  upload.single("file"),
+  DocumentController.uploadNewVersion,
+);
+
 /**
  * /documents/{id}/reupload:
  *   post:
