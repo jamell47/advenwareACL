@@ -36,6 +36,36 @@ interface LoginData {
 }
 
 export class AuthService {
+  private static async createRefreshToken(userId: string, refreshToken: string): Promise<void> {
+    try {
+      await prisma.refreshToken.create({
+        data: {
+          token: refreshToken,
+          userId,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      });
+    } catch (error: any) {
+      if (error.code === "P2002") {
+        const newRefreshToken = JwtUtil.generateRefreshToken({
+          userId,
+          email: (await prisma.user.findUnique({ where: { id: userId }, select: { email: true, role: true } }))!.email,
+          role: (await prisma.user.findUnique({ where: { id: userId }, select: { role: true } }))!.role,
+        });
+        await prisma.refreshToken.deleteMany({ where: { userId } });
+        await prisma.refreshToken.create({
+          data: {
+            token: newRefreshToken,
+            userId,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
+  }
+
   private static generateAccessToken(userId: string, email: string, role: string): string {
     return JwtUtil.generateAccessToken({ userId, email, role });
   }
@@ -123,17 +153,7 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email, user.role);
     const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
 
-    await prisma.refreshToken.deleteMany({
-      where: { userId: user.id },
-    });
-
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      },
-    });
+    await this.createRefreshToken(user.id, refreshToken);
 
     return { user, accessToken, refreshToken };
   }
@@ -170,17 +190,7 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email, user.role);
     const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
 
-    await prisma.refreshToken.deleteMany({
-      where: { userId: user.id },
-    });
-
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      },
-    });
+    await this.createRefreshToken(user.id, refreshToken);
 
     return {
       user: {
