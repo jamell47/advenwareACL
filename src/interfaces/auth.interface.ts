@@ -8,6 +8,11 @@ declare global {
         email: string;
         role: string;
       };
+      organisation?: {
+        id: string;
+        email: string;
+        role: string;
+      };
     }
   }
 }
