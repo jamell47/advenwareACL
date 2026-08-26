@@ -633,8 +633,8 @@ enum OrganisationRequestType {
 
 model Organisation {
   id            String             @id @default(uuid())
-  companyName   String
-  email         String             @unique
+  companyName   String?
+  email         String?             @unique
   phone         String?            @unique
   passwordHash  String
   profileImage  String?

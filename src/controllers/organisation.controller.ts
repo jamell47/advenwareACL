@@ -7,17 +7,14 @@ import { AuthenticatedOrganisationRequest } from "../middleware/organisationAuth
 export class OrganisationController {
   static async register(req: Request, res: Response, next: NextFunction) {
     try {
-      const body = { ...req.body };
-      delete body.confirmPassword;
-
-      const result = await OrganisationService.register(body);
+      const result = await OrganisationService.register(req.body);
 
       await AuditLogService.log(
         "ORGANISATION_REGISTERED",
         undefined,
         "Organisation",
         result.organisation.id,
-        `Organisation ${result.organisation.email} registered via API`,
+        `Organisation ${result.organisation.phone ?? result.organisation.email ?? "organisation"} registered via API`,
         undefined,
         req.ip,
         req.get("user-agent"),
@@ -46,7 +43,7 @@ export class OrganisationController {
         undefined,
         "Organisation",
         result.organisation.id,
-        `Organisation ${result.organisation.email} logged in via API`,
+        `Organisation ${result.organisation.phone ?? result.organisation.email ?? "organisation"} logged in via API`,
         undefined,
         req.ip,
         req.get("user-agent"),

@@ -48,7 +48,7 @@ export const authenticateOrganisation = async (
       return next(new APIError("Organisation account is not active", 403, "ORGANISATION_NOT_ACTIVE"));
     }
 
-    req.organisation = { id: organisation.id, email: organisation.email, role: "ORGANISATION" };
+    req.organisation = { id: organisation.id, email: organisation.email ?? "", role: "ORGANISATION" };
     next();
   } catch (error: any) {
     if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {

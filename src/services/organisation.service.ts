@@ -9,13 +9,9 @@ import { OrganizationStatus } from "@prisma/client";
 import crypto from "crypto";
 
 interface RegisterData {
-  companyName: string;
-  email: string;
   phone: string;
   password: string;
   location?: string;
-  industry?: string;
-  description?: string;
 }
 
 interface LoginData {
@@ -45,36 +41,22 @@ export class OrganisationService {
   }
 
   static async register(data: RegisterData): Promise<{ organisation: any; accessToken: string; refreshToken: string }> {
-    const existing = await prisma.organisation.findFirst({
-      where: {
-        OR: [
-          { email: data.email },
-          ...(data.phone ? [{ phone: data.phone }] : []),
-        ],
-      },
-      select: { id: true, email: true, phone: true },
+    const existing = await prisma.organisation.findUnique({
+      where: { phone: data.phone },
+      select: { id: true, phone: true },
     });
 
     if (existing) {
-      if (existing.email === data.email) {
-        throw new APIError("Email already registered", 409, "EMAIL_EXISTS");
-      }
-      if (existing.phone === data.phone) {
-        throw new APIError("Phone number already registered", 409, "PHONE_EXISTS");
-      }
+      throw new APIError("Phone number already registered", 409, "PHONE_EXISTS");
     }
 
     const passwordHash = await BcryptUtil.hashPassword(data.password);
 
     const organisation = await prisma.organisation.create({
       data: {
-        companyName: data.companyName,
-        email: data.email,
         phone: data.phone,
         passwordHash,
         location: data.location || undefined,
-        industry: data.industry || undefined,
-        description: data.description || undefined,
         status: OrganizationStatus.ACTIVE,
       },
       select: {
@@ -94,12 +76,12 @@ export class OrganisationService {
 
     const accessToken = JwtUtil.generateAccessToken({
       userId: organisation.id,
-      email: organisation.email,
+      email: organisation.email ?? "",
       role: "ORGANISATION",
     });
     const refreshToken = JwtUtil.generateRefreshToken({
       userId: organisation.id,
-      email: organisation.email,
+      email: organisation.email ?? "",
       role: "ORGANISATION",
     });
 
@@ -110,7 +92,7 @@ export class OrganisationService {
       undefined,
       "Organisation",
       organisation.id,
-      `Organisation ${organisation.email} registered`,
+      `Organisation ${organisation.phone ?? organisation.id} registered`,
     );
 
     return { organisation, accessToken, refreshToken };
@@ -155,12 +137,12 @@ export class OrganisationService {
 
     const accessToken = JwtUtil.generateAccessToken({
       userId: organisation.id,
-      email: organisation.email,
+      email: organisation.email ?? "",
       role: "ORGANISATION",
     });
     const refreshToken = JwtUtil.generateRefreshToken({
       userId: organisation.id,
-      email: organisation.email,
+      email: organisation.email ?? "",
       role: "ORGANISATION",
     });
 
@@ -171,7 +153,7 @@ export class OrganisationService {
       undefined,
       "Organisation",
       organisation.id,
-      `Organisation ${organisation.email} logged in`,
+      `Organisation ${organisation.phone ?? organisation.id} logged in`,
     );
 
     return { organisation: this.format(organisation), accessToken, refreshToken };
@@ -195,7 +177,7 @@ export class OrganisationService {
 
     const accessToken = JwtUtil.generateAccessToken({
       userId: stored.organisation.id,
-      email: stored.organisation.email,
+      email: stored.organisation.email ?? "",
       role: "ORGANISATION",
     });
 
