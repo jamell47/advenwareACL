@@ -12,6 +12,8 @@ interface RegisterData {
   phone: string;
   password: string;
   location?: string;
+  companyName?: string;
+  email?: string;
 }
 
 interface LoginData {
@@ -41,13 +43,23 @@ export class OrganisationService {
   }
 
   static async register(data: RegisterData): Promise<{ organisation: any; accessToken: string; refreshToken: string }> {
-    const existing = await prisma.organisation.findUnique({
-      where: { phone: data.phone },
-      select: { id: true, phone: true },
+    const existing = await prisma.organisation.findFirst({
+      where: {
+        OR: [
+          { phone: data.phone },
+          ...(data.email ? [{ email: data.email }] : []),
+        ],
+      },
+      select: { id: true, phone: true, email: true },
     });
 
     if (existing) {
-      throw new APIError("Phone number already registered", 409, "PHONE_EXISTS");
+      if (existing.phone === data.phone) {
+        throw new APIError("Phone number already registered", 409, "PHONE_EXISTS");
+      }
+      if (data.email && existing.email === data.email) {
+        throw new APIError("Email already registered", 409, "EMAIL_EXISTS");
+      }
     }
 
     const passwordHash = await BcryptUtil.hashPassword(data.password);
@@ -57,6 +69,8 @@ export class OrganisationService {
         phone: data.phone,
         passwordHash,
         location: data.location || undefined,
+        companyName: data.companyName || ` Organisation ${data.phone}`,
+        email: data.email || `${data.phone}@temp.placeholder`,
         status: OrganizationStatus.ACTIVE,
       },
       select: {

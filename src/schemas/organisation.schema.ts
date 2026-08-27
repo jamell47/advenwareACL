@@ -11,6 +11,8 @@ export const OrganisationRegisterSchema = z.object({
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number"),
   location: z.string().max(200).optional(),
+  companyName: z.string().max(100).optional(),
+  email: z.string().email("Invalid email address").optional(),
 });
 
 export type OrganisationRegisterInput = z.infer<typeof OrganisationRegisterSchema>;
