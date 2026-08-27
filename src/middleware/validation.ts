@@ -27,7 +27,18 @@ export const validate = (schema: ZodType) => {
         return next();
       }
 
-      const message = parsed.error!.errors.map((e: any) => e.message).join(", ");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("VALIDATION FAILED");
+        console.error("Path:", req.originalUrl);
+        console.error("Headers:", JSON.stringify(req.headers));
+        console.error("Body:", JSON.stringify(req.body));
+        console.error("Schema errors:", JSON.stringify(parsed.error?.errors ?? bodyParsed.error?.errors ?? queryParsed.error?.errors));
+      }
+
+      const message = (bodyParsed.error?.errors ?? parsed.error?.errors ?? queryParsed.error?.errors).map((e: any) => {
+        const path = e.path?.length === 1 ? String(e.path[0]) : "body";
+        return `${path}: ${e.message}`;
+      }).join(", ");
       next(new APIError(message, 400, "VALIDATION_ERROR"));
     } catch (error) {
       next(error);
