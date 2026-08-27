@@ -7,6 +7,10 @@ import { AuthenticatedOrganisationRequest } from "../middleware/organisationAuth
 export class OrganisationController {
   static async register(req: Request, res: Response, next: NextFunction) {
     try {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("ORG REGISTER BODY:", JSON.stringify(req.body));
+      }
+
       const result = await OrganisationService.register(req.body);
 
       await AuditLogService.log(
