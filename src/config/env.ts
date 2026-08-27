@@ -40,7 +40,7 @@ function getEnv(key: string, fallback?: string): string {
 export const env: EnvConfig = {
   nodeEnv: getEnv("NODE_ENV", "development"),
   port: parseInt(getEnv("PORT", "4000"), 10),
-  baseUrl: getEnv("BASE_URL", "http://localhost:4000"),
+  baseUrl: getEnv("BASE_URL", "https://advenwareacl.onrender.com"),
   databaseUrl: getEnv("DATABASE_URL"),
   jwtSecret: getEnv("JWT_SECRET"),
   jwtRefreshSecret: getEnv("JWT_REFRESH_SECRET"),
@@ -50,7 +50,7 @@ export const env: EnvConfig = {
   darajaConsumerSecret: getEnv("DARAJA_CONSUMER_SECRET", ""),
   darajaShortcode: getEnv("DARAJA_SHORTCODE", ""),
   darajaPasskey: getEnv("DARAJA_PASSKEY", ""),
-  darajaCallbackUrl: getEnv("DARAJA_CALLBACK_URL", "http://localhost:4000/api/v1/payments/callback"),
+  darajaCallbackUrl: getEnv("DARAJA_CALLBACK_URL", "https://advenwareacl.onrender.com/api/v1/payments/callback"),
   darajaEnvironment: getEnv("DARAJA_ENVIRONMENT", "sandbox"),
   storageEndpoint: getEnv("STORAGE_ENDPOINT", ""),
   storageAccessKey: getEnv("STORAGE_ACCESS_KEY", ""),
@@ -59,7 +59,7 @@ export const env: EnvConfig = {
   uploadMaxSizeMb: parseInt(getEnv("UPLOAD_MAX_SIZE_MB", "10"), 10),
   whatsappSupportNumber: getEnv("WHATSAPP_SUPPORT_NUMBER", ""),
   supportEmail: getEnv("SUPPORT_EMAIL", "support@advenwarecareer.link"),
-  corsOrigin: getEnv("CORS_ORIGIN", "http://localhost:5173,http://localhost:3000,http://localhost:4000,https://advenwareacl.onrender.com"),
+  corsOrigin: getEnv("CORS_ORIGIN", "http://localhost:5173,http://localhost:3000,https://advenware-ac-ladmin.vercel.app,https://advenwareacl.onrender.com"),
   rateLimitWindowMs: parseInt(getEnv("RATE_LIMIT_WINDOW_MS", "900000"), 10),
   rateLimitMax: parseInt(getEnv("RATE_LIMIT_MAX", "100"), 10),
 };

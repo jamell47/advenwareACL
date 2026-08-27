@@ -6,11 +6,12 @@ import path from "path";
 import routes from "./routes";
 import { env } from "./config/env";
 import { errorHandler, notFound } from "./middleware/errorHandler";
-import { authenticate } from "./middleware/auth";
 import { morganMiddleware } from "./config/logger";
 import { setupSwagger } from "./config/swagger";
 
 const app = express();
+
+app.set("trust proxy", 1);
 
 app.use(helmet());
 app.use(

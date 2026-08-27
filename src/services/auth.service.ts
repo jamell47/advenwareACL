@@ -264,7 +264,7 @@ export class AuthService {
       role: user.role,
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = process.env.FRONTEND_URL || "https://advenware-ac-ladmin.vercel.app";
 
     // In production, send this via email
     console.log(`Password reset link for ${user.firstName} ${user.lastName}: ${frontendUrl}/reset-password?token=${resetToken}`);
