@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodType, ZodError } from "zod";
+import { ZodType } from "zod";
 import { APIError } from "./errorHandler";
 
 export const validate = (schema: ZodType) => {
@@ -32,10 +32,12 @@ export const validate = (schema: ZodType) => {
         console.error("Path:", req.originalUrl);
         console.error("Headers:", JSON.stringify(req.headers));
         console.error("Body:", JSON.stringify(req.body));
-        console.error("Schema errors:", JSON.stringify(parsed.error?.errors ?? bodyParsed.error?.errors ?? queryParsed.error?.errors));
+        const schemaErrors = (parsed.error && parsed.error.errors) || (bodyParsed.error && bodyParsed.error.errors) || (queryParsed.error && queryParsed.error.errors);
+        console.error("Schema errors:", JSON.stringify(schemaErrors));
       }
 
-      const message = (bodyParsed.error?.errors ?? parsed.error?.errors ?? queryParsed.error?.errors).map((e: any) => {
+      const errors = (parsed.error && parsed.error.errors) || (bodyParsed.error && bodyParsed.error.errors) || (queryParsed.error && queryParsed.error.errors) || [];
+      const message = errors.map((e: any) => {
         const path = e.path?.length === 1 ? String(e.path[0]) : "body";
         return `${path}: ${e.message}`;
       }).join(", ");

@@ -1,8 +1,9 @@
-import { createReadStream, statSync, existsSync, mkdirSync, copyFileSync, unlinkSync, statSync as statSyncFn } from "fs";
+import { createReadStream, statSync, existsSync, mkdirSync, copyFileSync, unlinkSync } from "fs";
 import path from "path";
 import { env } from "../config/env";
 import FormData from "form-data";
 import axios from "axios";
+import { APIError } from "../middleware/errorHandler";
 
 export class StorageService {
   private static uploadDir = path.join(process.cwd(), "uploads");
@@ -29,7 +30,10 @@ export class StorageService {
     const filename = `${path.basename(file.originalname, ext)}-${uniqueSuffix}${ext}`;
     const filepath = path.join(folderPath, filename);
 
-    if (env.storageEndpoint) {
+    const s3Endpoint = env.storageEndpoint?.trim();
+    const useS3 = s3Endpoint ? s3Endpoint.startsWith("http://") || s3Endpoint.startsWith("https://") : false;
+
+    if (useS3) {
       return this.uploadToS3(file, folder, filename);
     }
 
@@ -47,13 +51,17 @@ export class StorageService {
     folder: string,
     filename: string,
   ): Promise<{ url: string; path: string; filename: string }> {
-    const s3Endpoint = env.storageEndpoint!;
+    const s3Endpoint = env.storageEndpoint!.replace(/\/$/, "");
     const bucket = env.storageBucket!;
     const accessKey = env.storageAccessKey!;
     const secretKey = env.storageSecretKey!;
 
+    if (!s3Endpoint.startsWith("http://") && !s3Endpoint.startsWith("https://")) {
+      throw new APIError("Invalid storage endpoint configured", 500, "STORAGE_CONFIG_ERROR");
+    }
+
     const fileStream = createReadStream(file.path);
-    const fileStat = statSyncFn(file.path);
+    const fileStat = statSync(file.path);
 
     const formData = new FormData();
     formData.append("file", fileStream, {
@@ -93,9 +101,9 @@ export class StorageService {
       return null;
     }
 
-    const stat = statSyncFn(fullPath);
-    const stream = createReadStream(fullPath);
-    return { stream, filename: path.basename(fullPath), mimeType: this.getMimeType(fullPath), stat };
+      const stat = statSync(fullPath);
+      const stream = createReadStream(fullPath);
+      return { stream, filename: path.basename(fullPath), mimeType: this.getMimeType(fullPath), stat };
   }
 
   private static getMimeType(filepath: string): string {
