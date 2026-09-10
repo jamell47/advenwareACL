@@ -53,6 +53,7 @@ class DarajaService {
                 BusinessShortCode: env_1.env.darajaShortcode,
                 Password: password,
                 Timestamp: timestamp,
+                TransactionType: "CustomerPayBillOnline",
                 PartyA: phoneNumber,
                 PartyB: env_1.env.darajaShortcode,
                 PhoneNumber: phoneNumber,

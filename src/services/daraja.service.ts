@@ -71,6 +71,7 @@ export class DarajaService {
           BusinessShortCode: env.darajaShortcode,
           Password: password,
           Timestamp: timestamp,
+          TransactionType: "CustomerPayBillOnline",
           PartyA: phoneNumber,
           PartyB: env.darajaShortcode,
           PhoneNumber: phoneNumber,
