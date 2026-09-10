@@ -33,18 +33,25 @@ export class PaymentService {
   }
 
   static async initiateSTKPush(userId: string, phoneNumber: string): Promise<any> {
-    const placement = await prisma.placement.findFirst({
+    let placement = await prisma.placement.findFirst({
       where: { userId, status: "CONFIRMED" },
     });
 
+    // Allow payment even without a confirmed placement - create a standalone payment
     if (!placement) {
-      throw new APIError("No confirmed placement found. Payment is only available after placement confirmation.", 400, "NO_CONFIRMED_PLACEMENT");
+      placement = await prisma.placement.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      });
     }
+
+    const feeAmount = placement?.feeAmount || 1500;
+    const placementId = placement?.id || null;
 
     const existingPayment = await prisma.payment.findFirst({
       where: {
         userId,
-        placementId: placement.id,
+        placementId: placementId || undefined,
         status: { in: ["PENDING", "PROCESSING"] },
       },
     });
@@ -54,11 +61,10 @@ export class PaymentService {
     if (existingPayment) {
       payment = existingPayment;
     } else {
-      const feeAmount = placement.feeAmount || 1500;
       payment = await prisma.payment.create({
         data: {
           userId,
-          placementId: placement.id,
+          placementId: placementId,
           amount: feeAmount,
           currency: "KES",
           method: "MPESA",
@@ -70,10 +76,10 @@ export class PaymentService {
       });
     }
 
-    if (!payment.placementId) {
+    if (placementId && !payment.placementId) {
       await prisma.payment.update({
         where: { id: payment.id },
-        data: { placementId: placement.id },
+        data: { placementId: placementId },
       });
     }
 
@@ -121,13 +127,15 @@ export class PaymentService {
       status: "PROCESSING",
       message: "STK push sent. Check your phone to complete payment.",
       mpesaPrompt: true,
-      placement: {
-        id: placement.id,
-        organizationName: placement.organizationName,
-        positionTitle: placement.positionTitle,
-        startDate: placement.startDate,
-        endDate: placement.endDate,
-      },
+      placement: payment.placement
+        ? {
+            id: payment.placement.id,
+            organizationName: payment.placement.organizationName,
+            positionTitle: payment.placement.positionTitle,
+            startDate: payment.placement.startDate,
+            endDate: payment.placement.endDate,
+          }
+        : null,
     };
   }
 

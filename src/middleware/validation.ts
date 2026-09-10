@@ -1,10 +1,23 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodType } from "zod";
+import { ZodType, ZodObject } from "zod";
 import { APIError } from "./errorHandler";
 
 export const validate = (schema: ZodType) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
+      // For multipart/form-data uploads, req.body contains the form text fields
+      // and req.file contains the uploaded file. Validate req.body directly.
+      const isMultipart = req.headers["content-type"]?.includes("multipart/form-data");
+
+      if (isMultipart) {
+        const bodyParsed = schema.safeParse(req.body);
+        if (bodyParsed.success) {
+          req.body = bodyParsed.data;
+          return next();
+        }
+      }
+
+      // Standard JSON/URL-encoded body validation
       const input = { body: req.body, params: req.params, query: req.query };
       const parsed = schema.safeParse(input);
 
@@ -15,12 +28,14 @@ export const validate = (schema: ZodType) => {
         return next();
       }
 
+      // Fallback: try parsing just body
       const bodyParsed = schema.safeParse(req.body);
       if (bodyParsed.success) {
         req.body = bodyParsed.data;
         return next();
       }
 
+      // Fallback: try parsing just query
       const queryParsed = schema.safeParse(req.query);
       if (queryParsed.success) {
         req.query = queryParsed.data;
@@ -31,7 +46,9 @@ export const validate = (schema: ZodType) => {
         console.error("VALIDATION FAILED");
         console.error("Path:", req.originalUrl);
         console.error("Headers:", JSON.stringify(req.headers));
-        console.error("Body:", JSON.stringify(req.body));
+        console.error("Body keys:", Object.keys(req.body || {}));
+        console.error("Body values:", JSON.stringify(req.body));
+        console.error("Files:", req.file ? "yes" : "no");
         const schemaErrors = (parsed.error && parsed.error.errors) || (bodyParsed.error && bodyParsed.error.errors) || (queryParsed.error && queryParsed.error.errors);
         console.error("Schema errors:", JSON.stringify(schemaErrors));
       }

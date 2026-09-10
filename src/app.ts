@@ -17,10 +17,13 @@ app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowedOrigins = env.corsOrigin
-        .split(",")
-        .map((o) => o.trim())
-        .filter(Boolean);
+       const allowedOrigins = [
+         ...env.corsOrigin
+           .split(",")
+           .map((o) => o.trim())
+           .filter(Boolean),
+         "https://advenwareacl.onrender.com",
+       ];
 
       console.log("CORS Origin:", origin);
       console.log("Allowed Origins:", allowedOrigins);

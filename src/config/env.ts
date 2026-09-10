@@ -31,7 +31,7 @@ interface EnvConfig {
 
 function getEnv(key: string, fallback?: string): string {
   const value = process.env[key];
-  if (!value && !fallback) {
+  if (value === undefined && fallback === undefined) {
     throw new Error(`Missing required environment variable: ${key}`);
   }
   return value || fallback!;

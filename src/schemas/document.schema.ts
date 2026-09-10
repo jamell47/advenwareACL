@@ -5,7 +5,7 @@ export const UploadDocumentSchema = z.object({
   type: z.nativeEnum(DocumentType),
   customTypeName: z.string().max(200).optional(),
   isRequired: z.boolean().optional(),
-});
+}).passthrough();
 
 export const DocumentQueryParamsSchema = z.object({
   type: z.nativeEnum(DocumentType).optional(),

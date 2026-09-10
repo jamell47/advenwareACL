@@ -47,6 +47,10 @@ export class DocumentController {
         throw new APIError("No file provided", 400, "NO_FILE");
       }
 
+      if (!req.body.type) {
+        throw new APIError("Document type is required", 400, "TYPE_REQUIRED");
+      }
+
       const document = await DocumentService.uploadDocument(req.user!.id, file, req.body);
 
       await NotificationService.createNotification({
