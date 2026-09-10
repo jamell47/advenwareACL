@@ -9,10 +9,10 @@ import { CommissionService } from "./commission.service";
 export class DarajaService {
   private static readonly BASE_URL =
     env.darajaEnvironment === "production"
-      ? "https://apisandbox.m-pesa.org"
-      : "https://apisandbox.m-pesa.org";
+      ? "https://api.safaricom.co.ke"
+      : "https://sandbox.safaricom.co.ke";
 
-  private static readonly AUTH_URL = "https://apisandbox.m-pesa.org/oauth/v1/generate";
+  private static readonly AUTH_URL = `${DarajaService.BASE_URL}/oauth/v1/generate`;
 
   static async getAccessToken(): Promise<string> {
     if (!env.darajaConsumerKey || !env.darajaConsumerSecret) {
@@ -33,7 +33,12 @@ export class DarajaService {
 
       return response.data.access_token;
     } catch (error: any) {
-      throw new APIError("Failed to get Daraja access token", 500, "DARAJA_AUTH_FAILED");
+      console.error("[Daraja] Auth failed:", error?.response?.data || error?.message);
+      throw new APIError(
+        `Failed to get Daraja access token: ${error?.response?.data?.errorDescription || error?.message || "Unknown error"}`,
+        500,
+        "DARAJA_AUTH_FAILED",
+      );
     }
   }
 
@@ -84,7 +89,12 @@ export class DarajaService {
 
       return response.data;
     } catch (error: any) {
-      throw new APIError("Failed to initiate STK push", 500, "STK_PUSH_FAILED");
+      console.error("[Daraja] STK push failed:", error?.response?.data || error?.message);
+      throw new APIError(
+        `Failed to initiate STK push: ${error?.response?.data?.errorMessage || error?.response?.data?.error || error?.message || "Unknown error"}`,
+        500,
+        "STK_PUSH_FAILED",
+      );
     }
   }
 

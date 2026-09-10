@@ -13,9 +13,9 @@ const notification_service_1 = require("./notification.service");
 const commission_service_1 = require("./commission.service");
 class DarajaService {
     static BASE_URL = env_1.env.darajaEnvironment === "production"
-        ? "https://apisandbox.m-pesa.org"
-        : "https://apisandbox.m-pesa.org";
-    static AUTH_URL = "https://apisandbox.m-pesa.org/oauth/v1/generate";
+        ? "https://api.safaricom.co.ke"
+        : "https://sandbox.safaricom.co.ke";
+    static AUTH_URL = `${DarajaService.BASE_URL}/oauth/v1/generate`;
     static async getAccessToken() {
         if (!env_1.env.darajaConsumerKey || !env_1.env.darajaConsumerSecret) {
             throw new errorHandler_1.APIError("Daraja credentials not configured", 500, "DARAJA_NOT_CONFIGURED");
@@ -33,7 +33,8 @@ class DarajaService {
             return response.data.access_token;
         }
         catch (error) {
-            throw new errorHandler_1.APIError("Failed to get Daraja access token", 500, "DARAJA_AUTH_FAILED");
+            console.error("[Daraja] Auth failed:", error?.response?.data || error?.message);
+            throw new errorHandler_1.APIError(`Failed to get Daraja access token: ${error?.response?.data?.errorDescription || error?.message || "Unknown error"}`, 500, "DARAJA_AUTH_FAILED");
         }
     }
     static async initiateSTKPush(phoneNumber, amount, accountReference, transactionDesc, userId) {
@@ -68,7 +69,8 @@ class DarajaService {
             return response.data;
         }
         catch (error) {
-            throw new errorHandler_1.APIError("Failed to initiate STK push", 500, "STK_PUSH_FAILED");
+            console.error("[Daraja] STK push failed:", error?.response?.data || error?.message);
+            throw new errorHandler_1.APIError(`Failed to initiate STK push: ${error?.response?.data?.errorMessage || error?.response?.data?.error || error?.message || "Unknown error"}`, 500, "STK_PUSH_FAILED");
         }
     }
     static async handleCallback(callbackData) {
