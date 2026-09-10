@@ -1,5 +1,5 @@
 import { z } from "zod";
-export declare const RegisterSchema: z.ZodObject<{
+export declare const RegisterSchema: z.ZodEffects<z.ZodObject<{
     firstName: z.ZodString;
     middleName: z.ZodOptional<z.ZodString>;
     lastName: z.ZodString;
@@ -33,6 +33,56 @@ export declare const RegisterSchema: z.ZodObject<{
     confirmPassword: z.ZodString;
     termsAccepted: z.ZodEffects<z.ZodBoolean, boolean, boolean>;
 }, "strip", z.ZodTypeAny, {
+    email: string;
+    phoneNumber: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: Date;
+    nationality: string;
+    idNumber: string;
+    idType: "NATIONAL_ID" | "PASSPORT";
+    institution: string;
+    course: string;
+    password: string;
+    confirmPassword: string;
+    termsAccepted: boolean;
+    middleName?: string | undefined;
+    gender?: "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY" | undefined;
+    studentRegistrationNumber?: string | undefined;
+    department?: string | undefined;
+    currentYear?: string | undefined;
+    expectedGraduation?: Date | undefined;
+    preferredStartDate?: Date | undefined;
+    preferredEndDate?: Date | undefined;
+    preferredLocation?: string | undefined;
+    preferredIndustry?: string | undefined;
+    preferredPlacementArea?: string | undefined;
+}, {
+    email: string;
+    phoneNumber: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: Date;
+    nationality: string;
+    idNumber: string;
+    idType: "NATIONAL_ID" | "PASSPORT";
+    institution: string;
+    course: string;
+    password: string;
+    confirmPassword: string;
+    termsAccepted: boolean;
+    middleName?: string | undefined;
+    gender?: "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY" | undefined;
+    studentRegistrationNumber?: string | undefined;
+    department?: string | undefined;
+    currentYear?: string | undefined;
+    expectedGraduation?: Date | undefined;
+    preferredStartDate?: Date | undefined;
+    preferredEndDate?: Date | undefined;
+    preferredLocation?: string | undefined;
+    preferredIndustry?: string | undefined;
+    preferredPlacementArea?: string | undefined;
+}>, {
     email: string;
     phoneNumber: string;
     firstName: string;

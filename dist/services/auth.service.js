@@ -7,6 +7,37 @@ const jwt_util_1 = require("../utils/jwt.util");
 const errorHandler_1 = require("../middleware/errorHandler");
 const client_1 = require("@prisma/client");
 class AuthService {
+    static async createRefreshToken(userId, refreshToken) {
+        try {
+            await prisma_1.prisma.refreshToken.create({
+                data: {
+                    token: refreshToken,
+                    userId,
+                    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                },
+            });
+        }
+        catch (error) {
+            if (error.code === "P2002") {
+                const newRefreshToken = jwt_util_1.JwtUtil.generateRefreshToken({
+                    userId,
+                    email: (await prisma_1.prisma.user.findUnique({ where: { id: userId }, select: { email: true, role: true } })).email,
+                    role: (await prisma_1.prisma.user.findUnique({ where: { id: userId }, select: { role: true } })).role,
+                });
+                await prisma_1.prisma.refreshToken.deleteMany({ where: { userId } });
+                await prisma_1.prisma.refreshToken.create({
+                    data: {
+                        token: newRefreshToken,
+                        userId,
+                        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    },
+                });
+            }
+            else {
+                throw error;
+            }
+        }
+    }
     static generateAccessToken(userId, email, role) {
         return jwt_util_1.JwtUtil.generateAccessToken({ userId, email, role });
     }
@@ -34,6 +65,14 @@ class AuthService {
             }
         }
         const passwordHash = await bcrypt_util_1.BcryptUtil.hashPassword(data.password);
+        const toDate = (value) => {
+            if (!value)
+                return undefined;
+            if (value instanceof Date)
+                return value;
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? undefined : date;
+        };
         const user = await prisma_1.prisma.user.create({
             data: {
                 email: data.email,
@@ -47,22 +86,22 @@ class AuthService {
                 isActive: true,
                 studentProfile: {
                     create: {
-                        dateOfBirth: data.dateOfBirth,
-                        nationality: data.nationality,
-                        gender: data.gender,
-                        idNumber: data.idNumber,
-                        idType: data.idType,
-                        institution: data.institution,
-                        course: data.course,
-                        department: data.department,
-                        currentYear: data.currentYear,
-                        studentRegistrationNumber: data.studentRegistrationNumber,
-                        expectedGraduation: data.expectedGraduation,
-                        preferredStartDate: data.preferredStartDate,
-                        preferredEndDate: data.preferredEndDate,
-                        preferredLocation: data.preferredLocation,
-                        preferredIndustry: data.preferredIndustry,
-                        preferredPlacementArea: data.preferredPlacementArea,
+                        dateOfBirth: toDate(data.dateOfBirth) || undefined,
+                        nationality: data.nationality || undefined,
+                        gender: data.gender || undefined,
+                        idNumber: data.idNumber || undefined,
+                        idType: data.idType || undefined,
+                        institution: data.institution || undefined,
+                        course: data.course || undefined,
+                        department: data.department || undefined,
+                        currentYear: data.currentYear || undefined,
+                        studentRegistrationNumber: data.studentRegistrationNumber || undefined,
+                        expectedGraduation: toDate(data.expectedGraduation),
+                        preferredStartDate: toDate(data.preferredStartDate),
+                        preferredEndDate: toDate(data.preferredEndDate),
+                        preferredLocation: data.preferredLocation || undefined,
+                        preferredIndustry: data.preferredIndustry || undefined,
+                        preferredPlacementArea: data.preferredPlacementArea || undefined,
                         profileCompleteness: 0,
                     },
                 },
@@ -80,6 +119,7 @@ class AuthService {
         });
         const accessToken = this.generateAccessToken(user.id, user.email, user.role);
         const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
+        await this.createRefreshToken(user.id, refreshToken);
         return { user, accessToken, refreshToken };
     }
     static async login(data) {
@@ -108,6 +148,7 @@ class AuthService {
         }
         const accessToken = this.generateAccessToken(user.id, user.email, user.role);
         const refreshToken = this.generateRefreshToken(user.id, user.email, user.role);
+        await this.createRefreshToken(user.id, refreshToken);
         return {
             user: {
                 id: user.id,
@@ -168,7 +209,7 @@ class AuthService {
             email: user.email,
             role: user.role,
         });
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+        const frontendUrl = process.env.FRONTEND_URL || "https://advenware-ac-ladmin.vercel.app";
         // In production, send this via email
         console.log(`Password reset link for ${user.firstName} ${user.lastName}: ${frontendUrl}/reset-password?token=${resetToken}`);
     }
@@ -188,6 +229,35 @@ class AuthService {
             where: { id: user.id },
             data: { passwordHash },
         });
+    }
+    static async getMe(userId) {
+        const user = await prisma_1.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                studentProfile: true,
+                agentProfile: { include: { organization: true } },
+            },
+        });
+        if (!user) {
+            throw new errorHandler_1.APIError("User not found", 404, "USER_NOT_FOUND");
+        }
+        return {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            middleName: user.middleName,
+            lastName: user.lastName,
+            phoneNumber: user.phoneNumber,
+            profileImage: user.profileImage,
+            role: user.role,
+            status: user.status,
+            isActive: user.isActive,
+            agentId: user.agentId,
+            studentProfile: user.studentProfile,
+            agentProfile: user.agentProfile,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        };
     }
 }
 exports.AuthService = AuthService;

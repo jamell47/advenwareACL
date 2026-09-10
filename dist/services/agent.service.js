@@ -7,6 +7,7 @@ const auditLog_service_1 = require("./auditLog.service");
 const notification_service_1 = require("./notification.service");
 const client_1 = require("@prisma/client");
 const bcrypt_util_1 = require("../utils/bcrypt.util");
+const query_util_1 = require("../utils/query.util");
 class AgentService {
     static async getAgentDashboard(agentId) {
         const agentStudentIds = (await prisma_1.prisma.user.findMany({ where: { agentId }, select: { id: true } })).map((u) => u.id);
@@ -57,17 +58,18 @@ class AgentService {
         const page = params.page || 1;
         const limit = params.limit || 20;
         const skip = (page - 1) * limit;
+        const cleanParams = (0, query_util_1.sanitizeQueryParams)(params);
         const where = { role: client_1.UserRole.AGENT };
-        if (params.search) {
+        if (cleanParams.search) {
             where.OR = [
-                { firstName: { contains: params.search, mode: "insensitive" } },
-                { lastName: { contains: params.search, mode: "insensitive" } },
-                { email: { contains: params.search, mode: "insensitive" } },
-                { phoneNumber: { contains: params.search, mode: "insensitive" } },
+                { firstName: { contains: cleanParams.search, mode: "insensitive" } },
+                { lastName: { contains: cleanParams.search, mode: "insensitive" } },
+                { email: { contains: cleanParams.search, mode: "insensitive" } },
+                { phoneNumber: { contains: cleanParams.search, mode: "insensitive" } },
             ];
         }
-        if (params.status) {
-            where.status = params.status;
+        if (cleanParams.status) {
+            where.status = cleanParams.status;
         }
         const [agents, total] = await Promise.all([
             prisma_1.prisma.user.findMany({
@@ -88,12 +90,12 @@ class AgentService {
         ]);
         const agentIds = agents.map((a) => a.id);
         const placementCounts = await prisma_1.prisma.placement.groupBy({
-            where: { userId: { in: agentIds.length > 0 ? agentIds : undefined } },
+            where: { userId: { in: agentIds.length > 0 ? agentIds : [] } },
             by: ["userId"],
             _count: { _all: true },
         });
         const commissionsAgg = await prisma_1.prisma.commission.groupBy({
-            where: { agentId: { in: agentIds.length > 0 ? agentIds : undefined } },
+            where: { agentId: { in: agentIds.length > 0 ? agentIds : [] } },
             by: ["agentId", "status"],
             _sum: { amount: true },
         });

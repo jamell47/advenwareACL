@@ -5,21 +5,23 @@ const prisma_1 = require("../config/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
 const auditLog_service_1 = require("./auditLog.service");
 const client_1 = require("@prisma/client");
+const query_util_1 = require("../utils/query.util");
 class OrganizationService {
     static async getOrganizations(params) {
         const page = params.page || 1;
         const limit = params.limit || 20;
         const skip = (page - 1) * limit;
+        const cleanParams = (0, query_util_1.sanitizeQueryParams)(params);
         const where = {};
-        if (params.search) {
+        if (cleanParams.search) {
             where.OR = [
-                { name: { contains: params.search, mode: "insensitive" } },
-                { industry: { contains: params.search, mode: "insensitive" } },
-                { location: { contains: params.search, mode: "insensitive" } },
+                { name: { contains: cleanParams.search, mode: "insensitive" } },
+                { industry: { contains: cleanParams.search, mode: "insensitive" } },
+                { location: { contains: cleanParams.search, mode: "insensitive" } },
             ];
         }
-        if (params.status) {
-            where.status = params.status;
+        if (cleanParams.status) {
+            where.status = cleanParams.status;
         }
         const [organizations, total] = await Promise.all([
             prisma_1.prisma.organization.findMany({

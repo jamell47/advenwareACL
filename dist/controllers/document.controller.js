@@ -8,7 +8,7 @@ const errorHandler_1 = require("../middleware/errorHandler");
 class DocumentController {
     static async getAllDocuments(req, res, next) {
         try {
-            const { type, status, page, limit } = req.query;
+            const { type, status, page, limit } = req.query || {};
             const result = await document_service_1.DocumentService.getAllDocuments(req.user.id, {
                 type: type,
                 status: status,
@@ -44,6 +44,9 @@ class DocumentController {
             const file = req.file;
             if (!file) {
                 throw new errorHandler_1.APIError("No file provided", 400, "NO_FILE");
+            }
+            if (!req.body.type) {
+                throw new errorHandler_1.APIError("Document type is required", 400, "TYPE_REQUIRED");
             }
             const document = await document_service_1.DocumentService.uploadDocument(req.user.id, file, req.body);
             await notification_service_1.NotificationService.createNotification({
@@ -120,9 +123,22 @@ class DocumentController {
             next(error);
         }
     }
+    static async getDocumentProgress(req, res, next) {
+        try {
+            const progress = await document_service_1.DocumentService.getDocumentProgress(req.user.id);
+            res.status(200).json({
+                success: true,
+                message: "Document progress retrieved successfully",
+                data: progress,
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
     static async getAdminDocuments(req, res, next) {
         try {
-            const { type, status, page, limit } = req.query;
+            const { type, status, page, limit } = req.query || {};
             const result = await document_service_1.DocumentService.getAdminDocuments({
                 type: type,
                 status: status,

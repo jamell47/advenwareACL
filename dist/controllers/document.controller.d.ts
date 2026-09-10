@@ -7,6 +7,7 @@ export declare class DocumentController {
     static deleteDocument(req: Request, res: Response, next: NextFunction): Promise<void>;
     static downloadDocument(req: Request, res: Response, next: NextFunction): Promise<void>;
     static getDocumentStats(req: Request, res: Response, next: NextFunction): Promise<void>;
+    static getDocumentProgress(req: Request, res: Response, next: NextFunction): Promise<void>;
     static getAdminDocuments(req: Request, res: Response, next: NextFunction): Promise<void>;
     static approveDocument(req: Request, res: Response, next: NextFunction): Promise<void>;
     static rejectDocument(req: Request, res: Response, next: NextFunction): Promise<void>;

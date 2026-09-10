@@ -8,16 +8,18 @@ const notification_service_1 = require("./notification.service");
 const env_1 = require("../config/env");
 const daraja_service_1 = require("./daraja.service");
 const client_1 = require("@prisma/client");
+const query_util_1 = require("../utils/query.util");
 class WithdrawalService {
     static async getAllWithdrawals(params) {
         const page = params.page || 1;
         const limit = params.limit || 20;
         const skip = (page - 1) * limit;
+        const cleanParams = (0, query_util_1.sanitizeQueryParams)(params);
         const where = {};
-        if (params.status)
-            where.status = params.status;
-        if (params.agentId)
-            where.agentId = params.agentId;
+        if (cleanParams.status)
+            where.status = cleanParams.status;
+        if (cleanParams.agentId)
+            where.agentId = cleanParams.agentId;
         const [withdrawals, total] = await Promise.all([
             prisma_1.prisma.withdrawal.findMany({
                 where,

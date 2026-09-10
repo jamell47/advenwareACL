@@ -4,6 +4,7 @@ exports.PlacementService = void 0;
 const prisma_1 = require("../config/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
 const client_1 = require("@prisma/client");
+const query_util_1 = require("../utils/query.util");
 class PlacementService {
     static async getMyPlacement(userId) {
         const placement = await prisma_1.prisma.placement.findFirst({
@@ -81,6 +82,153 @@ class PlacementService {
             },
         });
         return this.formatPlacement(updated);
+    }
+    static async getAdminPlacements(params) {
+        const page = params.page || 1;
+        const limit = params.limit || 20;
+        const skip = (page - 1) * limit;
+        const cleanParams = (0, query_util_1.sanitizeQueryParams)(params);
+        const where = {};
+        if (cleanParams.status)
+            where.status = cleanParams.status;
+        if (cleanParams.search) {
+            where.OR = [
+                { organizationName: { contains: cleanParams.search, mode: "insensitive" } },
+                { positionTitle: { contains: cleanParams.search, mode: "insensitive" } },
+                { location: { contains: cleanParams.search, mode: "insensitive" } },
+                { user: { firstName: { contains: cleanParams.search, mode: "insensitive" } } },
+                { user: { lastName: { contains: cleanParams.search, mode: "insensitive" } } },
+            ];
+        }
+        const [placements, total] = await Promise.all([
+            prisma_1.prisma.placement.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: "desc" },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phoneNumber: true,
+                            studentProfile: true,
+                        },
+                    },
+                    payment: true,
+                },
+            }),
+            prisma_1.prisma.placement.count({ where }),
+        ]);
+        return {
+            data: placements.map((p) => this.formatPlacement(p)),
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+    static async getAdminPlacementById(placementId) {
+        const placement = await prisma_1.prisma.placement.findUnique({
+            where: { id: placementId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phoneNumber: true,
+                        studentProfile: true,
+                    },
+                },
+                payment: true,
+            },
+        });
+        if (!placement) {
+            throw new errorHandler_1.APIError("Placement not found", 404, "PLACEMENT_NOT_FOUND");
+        }
+        return this.formatPlacement(placement);
+    }
+    static async adminCreatePlacement(data) {
+        const placement = await prisma_1.prisma.placement.create({
+            data: {
+                userId: data.userId,
+                applicationId: data.applicationId,
+                organizationName: data.organizationName,
+                department: data.department,
+                positionTitle: data.positionTitle,
+                location: data.location,
+                supervisorName: data.supervisorName,
+                supervisorPhone: data.supervisorPhone,
+                supervisorEmail: data.supervisorEmail,
+                startDate: data.startDate,
+                endDate: data.endDate,
+                status: data.status || client_1.PlacementStatus.MATCHED,
+                placementFee: data.placementFee || 1500,
+                feeAmount: 1500,
+                commissionAmount: 500,
+                matchedAt: new Date(),
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                payment: true,
+            },
+        });
+        return this.formatPlacement(placement);
+    }
+    static async adminUpdatePlacement(placementId, data) {
+        const updateData = {};
+        if (data.status)
+            updateData.status = data.status;
+        if (data.organizationName)
+            updateData.organizationName = data.organizationName;
+        if (data.department !== undefined)
+            updateData.department = data.department;
+        if (data.positionTitle)
+            updateData.positionTitle = data.positionTitle;
+        if (data.location)
+            updateData.location = data.location;
+        if (data.supervisorName !== undefined)
+            updateData.supervisorName = data.supervisorName;
+        if (data.supervisorPhone !== undefined)
+            updateData.supervisorPhone = data.supervisorPhone;
+        if (data.supervisorEmail !== undefined)
+            updateData.supervisorEmail = data.supervisorEmail;
+        if (data.startDate)
+            updateData.startDate = data.startDate;
+        if (data.endDate)
+            updateData.endDate = data.endDate;
+        if (data.status === client_1.PlacementStatus.CONFIRMED && !updateData.confirmedAt) {
+            updateData.confirmedAt = new Date();
+        }
+        const placement = await prisma_1.prisma.placement.update({
+            where: { id: placementId },
+            data: updateData,
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                payment: true,
+            },
+        });
+        return this.formatPlacement(placement);
     }
     static formatPlacement(placement) {
         return {

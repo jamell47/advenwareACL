@@ -42,6 +42,9 @@ exports.RegisterSchema = zod_1.z.object({
     termsAccepted: zod_1.z.boolean().refine((val) => val === true, {
         message: "You must accept the terms and conditions",
     }),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
 });
 exports.LoginSchema = zod_1.z.object({
     body: zod_1.z.object({

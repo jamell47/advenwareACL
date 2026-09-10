@@ -12,6 +12,7 @@ interface DocumentQueryParams {
     limit?: number;
 }
 export declare class DocumentService {
+    static REQUIRED_DOCUMENT_TYPES: DocumentType[];
     static getAllDocuments(userId: string, params?: DocumentQueryParams): Promise<{
         data: any[];
         meta: any;
@@ -27,6 +28,7 @@ export declare class DocumentService {
         stat: any;
     }>;
     static getDocumentStats(userId: string): Promise<any>;
+    static getDocumentProgress(userId: string): Promise<any>;
     static getAdminDocuments(params: DocumentQueryParams): Promise<{
         data: any[];
         meta: any;

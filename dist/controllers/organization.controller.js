@@ -3,14 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrganizationController = void 0;
 const organization_service_1 = require("../services/organization.service");
 const auditLog_service_1 = require("../services/auditLog.service");
+const query_util_1 = require("../utils/query.util");
 class OrganizationController {
     static async getOrganizations(req, res, next) {
         try {
+            const cleanParams = (0, query_util_1.sanitizeQueryParams)(req.query);
             const result = await organization_service_1.OrganizationService.getOrganizations({
                 page: req.query.page ? parseInt(req.query.page, 10) : undefined,
                 limit: req.query.limit ? parseInt(req.query.limit, 10) : undefined,
-                search: req.query.search,
-                status: req.query.status,
+                search: cleanParams.search,
+                status: cleanParams.status,
             });
             res.status(200).json({ success: true, message: "Organizations retrieved", data: result.data, meta: result.meta });
         }

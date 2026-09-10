@@ -54,12 +54,15 @@ export class PaymentService {
         placementId: placementId || undefined,
         status: { in: ["PENDING", "PROCESSING"] },
       },
+      include: {
+        placement: true,
+      },
     });
 
-    let payment;
+    let payment: any;
 
     if (existingPayment) {
-      payment = existingPayment;
+      payment = existingPayment as any;
     } else {
       payment = await prisma.payment.create({
         data: {
@@ -73,10 +76,10 @@ export class PaymentService {
         include: {
           placement: true,
         },
-      });
+      }) as any;
     }
 
-    if (placementId && !payment.placementId) {
+    if (placementId && !(payment as any).placementId) {
       await prisma.payment.update({
         where: { id: payment.id },
         data: { placementId: placementId },
@@ -127,13 +130,13 @@ export class PaymentService {
       status: "PROCESSING",
       message: "STK push sent. Check your phone to complete payment.",
       mpesaPrompt: true,
-      placement: payment.placement
+      placement: (payment as any).placement
         ? {
-            id: payment.placement.id,
-            organizationName: payment.placement.organizationName,
-            positionTitle: payment.placement.positionTitle,
-            startDate: payment.placement.startDate,
-            endDate: payment.placement.endDate,
+            id: (payment as any).placement.id,
+            organizationName: (payment as any).placement.organizationName,
+            positionTitle: (payment as any).placement.positionTitle,
+            startDate: (payment as any).placement.startDate,
+            endDate: (payment as any).placement.endDate,
           }
         : null,
     };

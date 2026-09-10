@@ -3,8 +3,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_controller_1 = require("../controllers/auth.controller");
 const validation_1 = require("../middleware/validation");
+const auth_1 = require("../middleware/auth");
 const auth_schema_1 = require("../schemas/auth.schema");
+const errorHandler_1 = require("../middleware/errorHandler");
 const router = (0, express_1.Router)();
+router.post("/register", (req, res, next) => {
+    try {
+        const parsed = auth_schema_1.RegisterSchema.safeParse(req.body);
+        if (!parsed.success) {
+            const message = parsed.error.errors.map((e) => e.message).join(", ");
+            return next(new errorHandler_1.APIError(message, 400, "VALIDATION_ERROR"));
+        }
+        req.body = parsed.data;
+        next();
+    }
+    catch (error) {
+        next(error);
+    }
+}, auth_controller_1.AuthController.register);
 /**
  * @swagger
  * tags:
@@ -72,7 +88,6 @@ const router = (0, express_1.Router)();
  *       409:
  *         description: Email or phone already registered
  */
-router.post("/register", (0, validation_1.validate)(auth_schema_1.RegisterSchema), auth_controller_1.AuthController.register);
 /**
  * @swagger
  * /auth/login:
@@ -94,5 +109,15 @@ router.post("/refresh", (0, validation_1.validate)(auth_schema_1.RefreshTokenSch
 router.post("/logout", auth_controller_1.AuthController.logout);
 router.post("/forgot-password", (0, validation_1.validate)(auth_schema_1.ForgotPasswordSchema), auth_controller_1.AuthController.forgotPassword);
 router.post("/reset-password", (0, validation_1.validate)(auth_schema_1.ResetPasswordSchema), auth_controller_1.AuthController.resetPassword);
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get the authenticated user's profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/me", auth_1.authenticate, auth_controller_1.AuthController.getMe);
 exports.default = router;
 //# sourceMappingURL=auth.routes.js.map

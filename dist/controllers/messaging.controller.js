@@ -67,6 +67,19 @@ class MessagingController {
             next(error);
         }
     }
+    static async createAgentConversation(req, res, next) {
+        try {
+            const conversation = await messaging_service_1.MessagingService.createAgentConversation(req.user.id, req.body.studentId, req.body.subject);
+            res.status(201).json({
+                success: true,
+                message: "Conversation created successfully",
+                data: conversation,
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.MessagingController = MessagingController;
 //# sourceMappingURL=messaging.controller.js.map

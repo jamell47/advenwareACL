@@ -1,3 +1,4 @@
+import { Gender, IDType } from "@prisma/client";
 interface RegisterData {
     firstName: string;
     middleName?: string;
@@ -6,8 +7,8 @@ interface RegisterData {
     email: string;
     dateOfBirth: Date;
     nationality: string;
-    gender?: string;
-    idType: string;
+    gender?: Gender;
+    idType?: IDType;
     idNumber: string;
     institution: string;
     course: string;
@@ -28,6 +29,7 @@ interface LoginData {
     password: string;
 }
 export declare class AuthService {
+    private static createRefreshToken;
     private static generateAccessToken;
     private static generateRefreshToken;
     static register(data: RegisterData): Promise<{
@@ -47,6 +49,7 @@ export declare class AuthService {
     static logout(refreshToken: string): Promise<void>;
     static forgotPassword(email: string): Promise<void>;
     static resetPassword(token: string, newPassword: string): Promise<void>;
+    static getMe(userId: string): Promise<any>;
 }
 export {};
 //# sourceMappingURL=auth.service.d.ts.map

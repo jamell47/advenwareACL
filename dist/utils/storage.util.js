@@ -9,6 +9,7 @@ const path_1 = __importDefault(require("path"));
 const env_1 = require("../config/env");
 const form_data_1 = __importDefault(require("form-data"));
 const axios_1 = __importDefault(require("axios"));
+const errorHandler_1 = require("../middleware/errorHandler");
 class StorageService {
     static uploadDir = path_1.default.join(process.cwd(), "uploads");
     static ensureUploadDir() {
@@ -26,7 +27,9 @@ class StorageService {
         const ext = path_1.default.extname(file.originalname);
         const filename = `${path_1.default.basename(file.originalname, ext)}-${uniqueSuffix}${ext}`;
         const filepath = path_1.default.join(folderPath, filename);
-        if (env_1.env.storageEndpoint) {
+        const s3Endpoint = env_1.env.storageEndpoint?.trim();
+        const useS3 = s3Endpoint ? s3Endpoint.startsWith("http://") || s3Endpoint.startsWith("https://") : false;
+        if (useS3) {
             return this.uploadToS3(file, folder, filename);
         }
         (0, fs_1.copyFileSync)(file.path, filepath);
@@ -37,10 +40,13 @@ class StorageService {
         };
     }
     static async uploadToS3(file, folder, filename) {
-        const s3Endpoint = env_1.env.storageEndpoint;
+        const s3Endpoint = env_1.env.storageEndpoint.replace(/\/$/, "");
         const bucket = env_1.env.storageBucket;
         const accessKey = env_1.env.storageAccessKey;
         const secretKey = env_1.env.storageSecretKey;
+        if (!s3Endpoint.startsWith("http://") && !s3Endpoint.startsWith("https://")) {
+            throw new errorHandler_1.APIError("Invalid storage endpoint configured", 500, "STORAGE_CONFIG_ERROR");
+        }
         const fileStream = (0, fs_1.createReadStream)(file.path);
         const fileStat = (0, fs_1.statSync)(file.path);
         const formData = new form_data_1.default();

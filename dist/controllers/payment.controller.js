@@ -4,6 +4,7 @@ exports.PaymentController = void 0;
 const prisma_1 = require("../config/prisma");
 const payment_service_1 = require("../services/payment.service");
 const errorHandler_1 = require("../middleware/errorHandler");
+const query_util_1 = require("../utils/query.util");
 class PaymentController {
     static async getMyPayments(req, res, next) {
         try {
@@ -36,16 +37,17 @@ class PaymentController {
             const page = req.query.page ? parseInt(req.query.page, 10) : 1;
             const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
             const skip = (page - 1) * limit;
+            const cleanParams = (0, query_util_1.sanitizeQueryParams)(req.query);
             const where = {};
-            if (req.query.status)
-                where.status = req.query.status;
-            if (req.query.search) {
+            if (cleanParams.status)
+                where.status = cleanParams.status;
+            if (cleanParams.search) {
                 where.OR = [
-                    { user: { firstName: { contains: req.query.search, mode: "insensitive" } } },
-                    { user: { lastName: { contains: req.query.search, mode: "insensitive" } } },
-                    { user: { email: { contains: req.query.search, mode: "insensitive" } } },
-                    { mpesaReceiptNumber: { contains: req.query.search, mode: "insensitive" } },
-                    { transactionId: { contains: req.query.search, mode: "insensitive" } },
+                    { user: { firstName: { contains: cleanParams.search, mode: "insensitive" } } },
+                    { user: { lastName: { contains: cleanParams.search, mode: "insensitive" } } },
+                    { user: { email: { contains: cleanParams.search, mode: "insensitive" } } },
+                    { mpesaReceiptNumber: { contains: cleanParams.search, mode: "insensitive" } },
+                    { transactionId: { contains: cleanParams.search, mode: "insensitive" } },
                 ];
             }
             const [payments, total] = await Promise.all([
@@ -56,8 +58,19 @@ class PaymentController {
                     orderBy: { createdAt: "desc" },
                     include: {
                         user: {
-                            select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
-                            include: { studentProfile: true },
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                                phoneNumber: true,
+                                studentProfile: {
+                                    select: {
+                                        institution: true,
+                                        course: true,
+                                    },
+                                },
+                            },
                         },
                         placement: true,
                     },
@@ -65,7 +78,31 @@ class PaymentController {
                 prisma_1.prisma.payment.count({ where }),
             ]);
             const formatted = payments.map((p) => ({
-                ...p,
+                id: p.id,
+                userId: p.userId,
+                placementId: p.placementId,
+                amount: p.amount,
+                currency: p.currency,
+                method: p.method,
+                status: p.status,
+                mpesaPhoneNumber: p.mpesaPhoneNumber,
+                mpesaReceiptNumber: p.mpesaReceiptNumber,
+                transactionId: p.transactionId,
+                checkoutRequestId: p.checkoutRequestId,
+                confirmedAt: p.confirmedAt,
+                createdAt: p.createdAt,
+                updatedAt: p.updatedAt,
+                placement: p.placement
+                    ? {
+                        id: p.placement.id,
+                        organizationName: p.placement.organizationName,
+                        positionTitle: p.placement.positionTitle,
+                        location: p.placement.location,
+                        startDate: p.placement.startDate,
+                        endDate: p.placement.endDate,
+                        status: p.placement.status,
+                    }
+                    : null,
                 user: p.user
                     ? {
                         id: p.user.id,

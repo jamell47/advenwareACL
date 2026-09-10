@@ -5,7 +5,7 @@ const notification_service_1 = require("../services/notification.service");
 class NotificationController {
     static async getMyNotifications(req, res, next) {
         try {
-            const { isRead, page, limit } = req.query;
+            const { isRead, page, limit } = req.query || {};
             const result = await notification_service_1.NotificationService.getMyNotifications(req.user.id, {
                 isRead: isRead !== undefined ? isRead === "true" : undefined,
                 page: page ? parseInt(page, 10) : undefined,

@@ -14,5 +14,8 @@ export declare class AdminController {
     static getAuditLogs(req: Request, res: Response, next: NextFunction): Promise<void>;
     static getSystemSettings(req: Request, res: Response, next: NextFunction): Promise<void>;
     static updateSystemSetting(req: Request, res: Response, next: NextFunction): Promise<void>;
+    static getDashboardCharts(req: Request, res: Response, next: NextFunction): Promise<void>;
+    static createAgent(req: Request, res: Response, next: NextFunction): Promise<void>;
+    static createStudent(req: Request, res: Response, next: NextFunction): Promise<void>;
 }
 //# sourceMappingURL=admin.controller.d.ts.map

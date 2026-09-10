@@ -88,18 +88,83 @@ class MessagingService {
                 },
             },
         });
-        const supportUser = await prisma_1.prisma.user.findFirst({
-            where: { role: "SUPPORT" },
-        });
-        if (supportUser) {
-            await prisma_1.prisma.conversationParticipant.create({
-                data: {
-                    conversationId: conversation.id,
-                    userId: supportUser.id,
-                    role: client_1.ConversationParticipantRole.SUPPORT,
-                },
+        if (data.type === "SUPPORT") {
+            const supportUser = await prisma_1.prisma.user.findFirst({
+                where: { role: "SUPPORT" },
             });
+            if (supportUser) {
+                await prisma_1.prisma.conversationParticipant.create({
+                    data: {
+                        conversationId: conversation.id,
+                        userId: supportUser.id,
+                        role: client_1.ConversationParticipantRole.SUPPORT,
+                    },
+                });
+            }
         }
+        else if (data.type === "AGENT") {
+            const student = await prisma_1.prisma.user.findUnique({
+                where: { id: userId },
+                select: { agentId: true },
+            });
+            if (student?.agentId) {
+                await prisma_1.prisma.conversationParticipant.create({
+                    data: {
+                        conversationId: conversation.id,
+                        userId: student.agentId,
+                        role: client_1.ConversationParticipantRole.AGENT,
+                    },
+                });
+                await prisma_1.prisma.conversation.update({
+                    where: { id: conversation.id },
+                    data: { agentId: student.agentId },
+                });
+            }
+        }
+        return {
+            id: conversation.id,
+            subject: conversation.subject,
+            isResolved: conversation.isResolved,
+            createdAt: conversation.createdAt,
+            updatedAt: conversation.updatedAt,
+        };
+    }
+    static async createAgentConversation(agentId, studentId, subject) {
+        const student = await prisma_1.prisma.user.findUnique({
+            where: { id: studentId },
+            select: { agentId: true, studentProfile: { select: { id: true } } },
+        });
+        if (!student || !student.studentProfile) {
+            throw new errorHandler_1.APIError("Student not found", 404, "STUDENT_NOT_FOUND");
+        }
+        if (student.agentId !== agentId) {
+            throw new errorHandler_1.APIError("You can only message your own students", 403, "FORBIDDEN");
+        }
+        const existingConversation = await prisma_1.prisma.conversation.findFirst({
+            where: { studentId, agentId },
+        });
+        if (existingConversation) {
+            return {
+                id: existingConversation.id,
+                subject: existingConversation.subject,
+                isResolved: existingConversation.isResolved,
+                createdAt: existingConversation.createdAt,
+                updatedAt: existingConversation.updatedAt,
+            };
+        }
+        const conversation = await prisma_1.prisma.conversation.create({
+            data: {
+                studentId,
+                agentId,
+                subject: subject || `Conversation with student`,
+                participants: {
+                    create: [
+                        { userId: studentId, role: client_1.ConversationParticipantRole.STUDENT },
+                        { userId: agentId, role: client_1.ConversationParticipantRole.AGENT },
+                    ],
+                },
+            },
+        });
         return {
             id: conversation.id,
             subject: conversation.subject,

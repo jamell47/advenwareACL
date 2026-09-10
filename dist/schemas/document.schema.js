@@ -7,7 +7,7 @@ exports.UploadDocumentSchema = zod_1.z.object({
     type: zod_1.z.nativeEnum(client_1.DocumentType),
     customTypeName: zod_1.z.string().max(200).optional(),
     isRequired: zod_1.z.boolean().optional(),
-});
+}).passthrough();
 exports.DocumentQueryParamsSchema = zod_1.z.object({
     type: zod_1.z.nativeEnum(client_1.DocumentType).optional(),
     status: zod_1.z.nativeEnum(client_1.DocumentStatus).optional(),

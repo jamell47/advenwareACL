@@ -7,7 +7,16 @@ const storage_util_1 = require("../utils/storage.util");
 const client_1 = require("@prisma/client");
 const auditLog_service_1 = require("./auditLog.service");
 const notification_service_1 = require("./notification.service");
+const query_util_1 = require("../utils/query.util");
 class DocumentService {
+    static REQUIRED_DOCUMENT_TYPES = [
+        client_1.DocumentType.NATIONAL_ID,
+        client_1.DocumentType.STUDENT_ID,
+        client_1.DocumentType.ATTACHMENT_LETTER,
+        client_1.DocumentType.INTRODUCTION_LETTER,
+        client_1.DocumentType.CV,
+        client_1.DocumentType.ACADEMIC_CERTIFICATE,
+    ];
     static async getAllDocuments(userId, params = {}) {
         const page = params.page || 1;
         const limit = params.limit || 20;
@@ -214,15 +223,49 @@ class DocumentService {
             totalCount: total,
         };
     }
+    static async getDocumentProgress(userId) {
+        const documents = await prisma_1.prisma.document.findMany({
+            where: { userId },
+            select: {
+                type: true,
+                status: true,
+                isRequired: true,
+            },
+        });
+        const requiredDocs = this.REQUIRED_DOCUMENT_TYPES.map((type) => {
+            const doc = documents.find((d) => d.type === type);
+            if (!doc) {
+                return { type, status: "NOT_UPLOADED", isRequired: true };
+            }
+            return { type, status: doc.status, isRequired: doc.isRequired };
+        });
+        const verifiedCount = requiredDocs.filter((d) => d.status === "APPROVED").length;
+        const pendingCount = requiredDocs.filter((d) => d.status === "PENDING_REVIEW").length;
+        const rejectedCount = requiredDocs.filter((d) => d.status === "REJECTED" || d.status === "REUPLOAD_REQUIRED").length;
+        const notUploadedCount = requiredDocs.filter((d) => d.status === "NOT_UPLOADED").length;
+        const progress = Math.round((verifiedCount / requiredDocs.length) * 100);
+        return {
+            progress,
+            documents: {
+                total: requiredDocs.length,
+                verified: verifiedCount,
+                pending: pendingCount,
+                rejected: rejectedCount,
+                notUploaded: notUploadedCount,
+            },
+            requiredDocuments: requiredDocs,
+        };
+    }
     static async getAdminDocuments(params) {
         const page = params.page || 1;
         const limit = params.limit || 20;
         const skip = (page - 1) * limit;
+        const cleanParams = (0, query_util_1.sanitizeQueryParams)(params);
         const where = {};
-        if (params.type)
-            where.type = params.type;
-        if (params.status)
-            where.status = params.status;
+        if (cleanParams.type)
+            where.type = cleanParams.type;
+        if (cleanParams.status)
+            where.status = cleanParams.status;
         const [documents, total] = await Promise.all([
             prisma_1.prisma.document.findMany({
                 where,

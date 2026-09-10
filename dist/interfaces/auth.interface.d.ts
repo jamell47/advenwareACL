@@ -6,6 +6,11 @@ declare global {
                 email: string;
                 role: string;
             };
+            organisation?: {
+                id: string;
+                email: string;
+                role: string;
+            };
         }
     }
 }
@@ -14,6 +19,7 @@ export interface TokenPayload {
     email: string;
     role: string;
     type: "access" | "refresh";
+    jti?: string;
     iat?: number;
     exp?: number;
 }

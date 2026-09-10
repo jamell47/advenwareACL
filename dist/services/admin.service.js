@@ -6,6 +6,8 @@ const auditLog_service_1 = require("./auditLog.service");
 const notification_service_1 = require("./notification.service");
 const errorHandler_1 = require("../middleware/errorHandler");
 const client_1 = require("@prisma/client");
+const bcrypt_util_1 = require("../utils/bcrypt.util");
+const query_util_1 = require("../utils/query.util");
 class AdminService {
     static async getDashboardStats() {
         const [totalStudents, totalAgents, totalAdmins, totalApplications, totalPlacements, successfulPlacements, pendingApplications, pendingDocuments, totalPayments, totalRevenue, eligibleCommissions, paidCommissions, pendingWithdrawals, totalOrganizations,] = await Promise.all([
@@ -44,37 +46,92 @@ class AdminService {
             totalOrganizations,
         };
     }
+    static async getDashboardCharts() {
+        const [usersByRole, commissionsByStatus, paymentsByStatus, studentsByMonthRaw, paidStudentsCount,] = await Promise.all([
+            prisma_1.prisma.user.groupBy({
+                by: ["role"],
+                _count: { id: true },
+                where: { role: { in: [client_1.UserRole.STUDENT, client_1.UserRole.AGENT, client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN, client_1.UserRole.FINANCE, client_1.UserRole.PLACEMENT_ADMIN, client_1.UserRole.DOCUMENT_ADMIN, client_1.UserRole.SUPPORT] } },
+            }),
+            prisma_1.prisma.commission.groupBy({
+                by: ["status"],
+                _count: { id: true },
+                _sum: { amount: true },
+            }),
+            prisma_1.prisma.payment.groupBy({
+                by: ["status"],
+                _count: { id: true },
+                _sum: { amount: true },
+            }),
+            prisma_1.prisma.$queryRaw `
+        SELECT DATE_FORMAT(createdAt, '%Y-%m') as month, COUNT(*) as count
+        FROM users
+        WHERE role = 'STUDENT' AND createdAt >= DATE_FORMAT(NOW(), '%Y-01-01')
+        GROUP BY month
+        ORDER BY month ASC
+      `,
+            prisma_1.prisma.user.count({
+                where: {
+                    role: client_1.UserRole.STUDENT,
+                    payments: { some: { status: "SUCCESSFUL", amount: { gte: 1500 } } },
+                },
+            }),
+        ]);
+        const studentsByMonth = studentsByMonthRaw.map((item) => ({
+            month: item.month,
+            count: Number(item.count),
+        }));
+        return {
+            usersByRole: usersByRole.map((item) => ({
+                name: item.role,
+                value: item._count.id,
+            })),
+            commissionsByStatus: commissionsByStatus.map((item) => ({
+                name: item.status,
+                value: item._sum.amount || 0,
+                count: item._count.id,
+            })),
+            paymentsByStatus: paymentsByStatus.map((item) => ({
+                name: item.status,
+                value: item._sum.amount || 0,
+                count: item._count.id,
+            })),
+            studentsByMonth,
+            paidStudentsCount,
+        };
+    }
     static async getStudents(params) {
         const page = params.page || 1;
         const limit = params.limit || 20;
         const skip = (page - 1) * limit;
+        const cleanParams = (0, query_util_1.sanitizeQueryParams)(params);
         const where = {
             role: client_1.UserRole.STUDENT,
         };
-        if (params.search) {
+        if (cleanParams.search) {
             where.OR = [
-                { firstName: { contains: params.search, mode: "insensitive" } },
-                { lastName: { contains: params.search, mode: "insensitive" } },
-                { email: { contains: params.search, mode: "insensitive" } },
-                { phoneNumber: { contains: params.search, mode: "insensitive" } },
+                { firstName: { contains: cleanParams.search, mode: "insensitive" } },
+                { lastName: { contains: cleanParams.search, mode: "insensitive" } },
+                { email: { contains: cleanParams.search, mode: "insensitive" } },
+                { phoneNumber: { contains: cleanParams.search, mode: "insensitive" } },
             ];
         }
-        if (params.status) {
-            where.status = params.status;
+        if (cleanParams.status) {
+            where.status = cleanParams.status;
         }
-        if (params.institution) {
+        if (cleanParams.institution) {
             where.studentProfile = {
-                institution: { contains: params.institution, mode: "insensitive" },
+                institution: { contains: cleanParams.institution, mode: "insensitive" },
             };
         }
-        if (params.course) {
+        if (cleanParams.course) {
             where.studentProfile = {
                 ...where.studentProfile,
-                course: { contains: params.course, mode: "insensitive" },
+                course: { contains: cleanParams.course, mode: "insensitive" },
             };
         }
-        if (params.agentId) {
-            where.agentId = params.agentId;
+        if (cleanParams.agentId) {
+            where.agentId = cleanParams.agentId;
         }
         const [students, total] = await Promise.all([
             prisma_1.prisma.user.findMany({
@@ -243,17 +300,18 @@ class AdminService {
         const page = params.page || 1;
         const limit = params.limit || 20;
         const skip = (page - 1) * limit;
+        const cleanParams = (0, query_util_1.sanitizeQueryParams)(params);
         const adminRoles = [client_1.UserRole.ADMIN, client_1.UserRole.SUPER_ADMIN, client_1.UserRole.FINANCE, client_1.UserRole.PLACEMENT_ADMIN, client_1.UserRole.DOCUMENT_ADMIN, client_1.UserRole.SUPPORT];
         const where = { role: { in: adminRoles } };
-        if (params.search) {
+        if (cleanParams.search) {
             where.OR = [
-                { firstName: { contains: params.search, mode: "insensitive" } },
-                { lastName: { contains: params.search, mode: "insensitive" } },
-                { email: { contains: params.search, mode: "insensitive" } },
+                { firstName: { contains: cleanParams.search, mode: "insensitive" } },
+                { lastName: { contains: cleanParams.search, mode: "insensitive" } },
+                { email: { contains: cleanParams.search, mode: "insensitive" } },
             ];
         }
-        if (params.status) {
-            where.status = params.status;
+        if (cleanParams.status) {
+            where.status = cleanParams.status;
         }
         const [admins, total] = await Promise.all([
             prisma_1.prisma.user.findMany({
@@ -327,6 +385,138 @@ class AdminService {
             data: logs,
             meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
         };
+    }
+    static async createAgent(data) {
+        const existingUser = await prisma_1.prisma.user.findFirst({
+            where: { OR: [{ email: data.email }, { phoneNumber: data.phoneNumber }].filter(Boolean) },
+            select: { id: true, email: true, phoneNumber: true, role: true },
+        });
+        if (existingUser) {
+            if (existingUser.email === data.email) {
+                throw new errorHandler_1.APIError("Email already registered", 409, "EMAIL_EXISTS");
+            }
+            if (existingUser.phoneNumber === data.phoneNumber) {
+                throw new errorHandler_1.APIError("Phone number already registered", 409, "PHONE_EXISTS");
+            }
+        }
+        const passwordHash = await bcrypt_util_1.BcryptUtil.hashPassword(data.password);
+        const agentProfileData = {
+            isApproved: true,
+            commissionRate: data.commissionRate || 500,
+        };
+        if (data.organizationId) {
+            agentProfileData.organizationId = data.organizationId;
+        }
+        const agent = await prisma_1.prisma.user.create({
+            data: {
+                email: data.email,
+                phoneNumber: data.phoneNumber,
+                passwordHash,
+                firstName: data.firstName,
+                middleName: data.middleName,
+                lastName: data.lastName,
+                role: client_1.UserRole.AGENT,
+                status: client_1.UserStatus.ACTIVE,
+                isActive: true,
+                agentProfile: {
+                    create: agentProfileData,
+                },
+            },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                phoneNumber: true,
+                role: true,
+                status: true,
+                createdAt: true,
+                agentProfile: true,
+            },
+        });
+        await auditLog_service_1.AuditLogService.log("AGENT_CREATED", data.createdBy, "User", agent.id, `Agent ${agent.email} created by admin ${data.createdBy}`);
+        await notification_service_1.NotificationService.createNotification({
+            userId: agent.id,
+            type: "SYSTEM",
+            title: "Account Created",
+            message: "Your agent account has been created. You can now log in.",
+            data: { agentId: agent.id },
+        });
+        return agent;
+    }
+    static async createStudent(data) {
+        const existingUser = await prisma_1.prisma.user.findFirst({
+            where: { OR: [{ email: data.email }, { phoneNumber: data.phoneNumber }].filter(Boolean) },
+            select: { id: true, email: true, phoneNumber: true, role: true },
+        });
+        if (existingUser) {
+            if (existingUser.email === data.email) {
+                throw new errorHandler_1.APIError("Email already registered", 409, "EMAIL_EXISTS");
+            }
+            if (existingUser.phoneNumber === data.phoneNumber) {
+                throw new errorHandler_1.APIError("Phone number already registered", 409, "PHONE_EXISTS");
+            }
+        }
+        const passwordHash = await bcrypt_util_1.BcryptUtil.hashPassword(data.password);
+        const studentData = {
+            email: data.email,
+            phoneNumber: data.phoneNumber,
+            passwordHash,
+            firstName: data.firstName,
+            middleName: data.middleName,
+            lastName: data.lastName,
+            role: client_1.UserRole.STUDENT,
+            status: client_1.UserStatus.ACTIVE,
+            isActive: true,
+            studentProfile: {
+                create: {
+                    dateOfBirth: data.dateOfBirth,
+                    nationality: data.nationality,
+                    gender: data.gender,
+                    idNumber: data.idNumber,
+                    idType: data.idType,
+                    institution: data.institution,
+                    course: data.course,
+                    department: data.department,
+                    currentYear: data.currentYear,
+                    studentRegistrationNumber: data.studentRegistrationNumber,
+                    expectedGraduation: data.expectedGraduation,
+                    preferredStartDate: data.preferredStartDate,
+                    preferredEndDate: data.preferredEndDate,
+                    preferredLocation: data.preferredLocation,
+                    preferredIndustry: data.preferredIndustry,
+                    preferredPlacementArea: data.preferredPlacementArea,
+                    profileCompleteness: 100,
+                },
+            },
+        };
+        if (data.agentId) {
+            studentData.agentId = data.agentId;
+        }
+        const student = await prisma_1.prisma.user.create({
+            data: studentData,
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                phoneNumber: true,
+                role: true,
+                status: true,
+                createdAt: true,
+                agentId: true,
+                studentProfile: true,
+            },
+        });
+        await auditLog_service_1.AuditLogService.log("STUDENT_CREATED", data.createdBy, "User", student.id, `Student ${student.email} created by admin ${data.createdBy}`);
+        await notification_service_1.NotificationService.createNotification({
+            userId: student.id,
+            type: "SYSTEM",
+            title: "Account Created",
+            message: "Your student account has been created. You can now log in.",
+            data: { studentId: student.id },
+        });
+        return student;
     }
 }
 exports.AdminService = AdminService;

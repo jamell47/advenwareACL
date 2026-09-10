@@ -5,7 +5,13 @@ const auth_1 = require("../middleware/auth");
 const messaging_controller_1 = require("../controllers/messaging.controller");
 const validation_1 = require("../middleware/validation");
 const messaging_schema_1 = require("../schemas/messaging.schema");
+const errorHandler_1 = require("../middleware/errorHandler");
+const zod_1 = require("zod");
 const router = (0, express_1.Router)();
+const CreateAgentConversationSchema = zod_1.z.object({
+    studentId: zod_1.z.string().min(1, "Student ID is required"),
+    subject: zod_1.z.string().max(200).optional(),
+});
 /**
  * @swagger
  * tags:
@@ -14,7 +20,7 @@ const router = (0, express_1.Router)();
  */
 /**
  * @swagger
- * /conversations:
+ * /messaging/conversations:
  *   get:
  *     summary: Get all conversations for the authenticated student
  *     tags: [Messaging]
@@ -24,7 +30,7 @@ const router = (0, express_1.Router)();
 router.get("/conversations", auth_1.authenticate, messaging_controller_1.MessagingController.getConversations);
 /**
  * @swagger
- * /conversations:
+ * /messaging/conversations:
  *   post:
  *     summary: Create a new conversation
  *     tags: [Messaging]
@@ -34,7 +40,7 @@ router.get("/conversations", auth_1.authenticate, messaging_controller_1.Messagi
 router.post("/conversations", auth_1.authenticate, (0, validation_1.validate)(messaging_schema_1.CreateConversationSchema), messaging_controller_1.MessagingController.createConversation);
 /**
  * @swagger
- * /conversations/{id}:
+ * /messaging/conversations/{id}:
  *   get:
  *     summary: Get messages in a conversation
  *     tags: [Messaging]
@@ -44,7 +50,7 @@ router.post("/conversations", auth_1.authenticate, (0, validation_1.validate)(me
 router.get("/conversations/:id", auth_1.authenticate, messaging_controller_1.MessagingController.getConversationMessages);
 /**
  * @swagger
- * /conversations/{id}/messages:
+ * /messaging/conversations/{id}/messages:
  *   post:
  *     summary: Send a message in a conversation
  *     tags: [Messaging]
@@ -54,7 +60,7 @@ router.get("/conversations/:id", auth_1.authenticate, messaging_controller_1.Mes
 router.post("/conversations/:id/messages", auth_1.authenticate, (0, validation_1.validate)(messaging_schema_1.SendMessageSchema), messaging_controller_1.MessagingController.sendMessage);
 /**
  * @swagger
- * /conversations/{id}/read:
+ * /messaging/conversations/{id}/read:
  *   patch:
  *     summary: Mark all messages in a conversation as read
  *     tags: [Messaging]
@@ -62,5 +68,26 @@ router.post("/conversations/:id/messages", auth_1.authenticate, (0, validation_1
  *       - bearerAuth: []
  */
 router.patch("/conversations/:id/read", auth_1.authenticate, messaging_controller_1.MessagingController.markMessagesAsRead);
+/**
+ * @swagger
+ * /messaging/agent/conversations:
+ *   get:
+ *     summary: Get all conversations for the authenticated agent
+ *     tags: [Messaging]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/agent/conversations", auth_1.authenticate, (req, res, next) => {
+    if (req.user.role !== "AGENT") {
+        return next(new errorHandler_1.APIError("Agent access required", 403, "FORBIDDEN"));
+    }
+    next();
+}, messaging_controller_1.MessagingController.getConversations);
+router.post("/agent/conversations", auth_1.authenticate, (req, res, next) => {
+    if (req.user.role !== "AGENT") {
+        return next(new errorHandler_1.APIError("Agent access required", 403, "FORBIDDEN"));
+    }
+    next();
+}, (0, validation_1.validate)(CreateAgentConversationSchema), messaging_controller_1.MessagingController.createAgentConversation);
 exports.default = router;
 //# sourceMappingURL=messaging.routes.js.map

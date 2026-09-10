@@ -8,8 +8,8 @@ export declare const NotificationQueryParamsSchema: z.ZodObject<{
     limit: number;
     isRead?: "true" | "false" | undefined;
 }, {
+    isRead?: "true" | "false" | undefined;
     page?: number | undefined;
     limit?: number | undefined;
-    isRead?: "true" | "false" | undefined;
 }>;
 //# sourceMappingURL=notification.schema.d.ts.map

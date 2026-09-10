@@ -186,6 +186,39 @@ class AdminController {
             next(error);
         }
     }
+    static async getDashboardCharts(req, res, next) {
+        try {
+            const charts = await admin_service_1.AdminService.getDashboardCharts();
+            res.status(200).json({ success: true, message: "Dashboard charts retrieved", data: charts });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async createAgent(req, res, next) {
+        try {
+            const agent = await admin_service_1.AdminService.createAgent({
+                ...req.body,
+                createdBy: req.user.id,
+            });
+            res.status(201).json({ success: true, message: "Agent created successfully", data: agent });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async createStudent(req, res, next) {
+        try {
+            const student = await admin_service_1.AdminService.createStudent({
+                ...req.body,
+                createdBy: req.user.id,
+            });
+            res.status(201).json({ success: true, message: "Student created successfully", data: student });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.AdminController = AdminController;
 //# sourceMappingURL=admin.controller.js.map

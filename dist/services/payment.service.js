@@ -30,17 +30,26 @@ class PaymentService {
         return this.formatPayment(payment);
     }
     static async initiateSTKPush(userId, phoneNumber) {
-        const placement = await prisma_1.prisma.placement.findFirst({
+        let placement = await prisma_1.prisma.placement.findFirst({
             where: { userId, status: "CONFIRMED" },
         });
+        // Allow payment even without a confirmed placement - create a standalone payment
         if (!placement) {
-            throw new errorHandler_1.APIError("No confirmed placement found. Payment is only available after placement confirmation.", 400, "NO_CONFIRMED_PLACEMENT");
+            placement = await prisma_1.prisma.placement.findFirst({
+                where: { userId },
+                orderBy: { createdAt: "desc" },
+            });
         }
+        const feeAmount = placement?.feeAmount || 1500;
+        const placementId = placement?.id || null;
         const existingPayment = await prisma_1.prisma.payment.findFirst({
             where: {
                 userId,
-                placementId: placement.id,
+                placementId: placementId || undefined,
                 status: { in: ["PENDING", "PROCESSING"] },
+            },
+            include: {
+                placement: true,
             },
         });
         let payment;
@@ -48,11 +57,10 @@ class PaymentService {
             payment = existingPayment;
         }
         else {
-            const feeAmount = placement.feeAmount || 1500;
             payment = await prisma_1.prisma.payment.create({
                 data: {
                     userId,
-                    placementId: placement.id,
+                    placementId: placementId,
                     amount: feeAmount,
                     currency: "KES",
                     method: "MPESA",
@@ -63,10 +71,10 @@ class PaymentService {
                 },
             });
         }
-        if (!payment.placementId) {
+        if (placementId && !payment.placementId) {
             await prisma_1.prisma.payment.update({
                 where: { id: payment.id },
-                data: { placementId: placement.id },
+                data: { placementId: placementId },
             });
         }
         const accountReference = `ACL-PAY-${payment.id.slice(0, 8)}`;
@@ -96,13 +104,15 @@ class PaymentService {
             status: "PROCESSING",
             message: "STK push sent. Check your phone to complete payment.",
             mpesaPrompt: true,
-            placement: {
-                id: placement.id,
-                organizationName: placement.organizationName,
-                positionTitle: placement.positionTitle,
-                startDate: placement.startDate,
-                endDate: placement.endDate,
-            },
+            placement: payment.placement
+                ? {
+                    id: payment.placement.id,
+                    organizationName: payment.placement.organizationName,
+                    positionTitle: payment.placement.positionTitle,
+                    startDate: payment.placement.startDate,
+                    endDate: payment.placement.endDate,
+                }
+                : null,
         };
     }
     static async handleCallback(callbackData) {

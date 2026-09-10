@@ -20,6 +20,7 @@ class JwtUtil {
         const fullPayload = {
             ...payload,
             type: "refresh",
+            jti: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         };
         return jsonwebtoken_1.default.sign(fullPayload, env_1.env.jwtRefreshSecret, {
             expiresIn: env_1.env.jwtRefreshExpiresIn,

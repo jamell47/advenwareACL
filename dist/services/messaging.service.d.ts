@@ -10,6 +10,7 @@ interface SendMessageData {
 export declare class MessagingService {
     static getConversations(userId: string): Promise<any[]>;
     static createConversation(userId: string, data: CreateConversationData): Promise<any>;
+    static createAgentConversation(agentId: string, studentId: string, subject?: string): Promise<any>;
     static getConversationMessages(userId: string, conversationId: string): Promise<any>;
     static sendMessage(userId: string, conversationId: string, data: SendMessageData): Promise<any>;
     static markMessagesAsRead(userId: string, conversationId: string): Promise<void>;

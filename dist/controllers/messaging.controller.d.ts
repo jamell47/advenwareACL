@@ -5,5 +5,6 @@ export declare class MessagingController {
     static getConversationMessages(req: Request, res: Response, next: NextFunction): Promise<void>;
     static sendMessage(req: Request, res: Response, next: NextFunction): Promise<void>;
     static markMessagesAsRead(req: Request, res: Response, next: NextFunction): Promise<void>;
+    static createAgentConversation(req: Request, res: Response, next: NextFunction): Promise<void>;
 }
 //# sourceMappingURL=messaging.controller.d.ts.map

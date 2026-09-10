@@ -6,7 +6,12 @@ const auditLog_service_1 = require("../services/auditLog.service");
 class AuthController {
     static async register(req, res, next) {
         try {
-            const result = await auth_service_1.AuthService.register(req.body);
+            const body = { ...req.body };
+            delete body.confirmPassword;
+            if (process.env.NODE_ENV === "development") {
+                console.log("Register request body:", JSON.stringify(body, null, 2));
+            }
+            const result = await auth_service_1.AuthService.register(body);
             await auditLog_service_1.AuditLogService.log("USER_REGISTERED", result.user.id, "User", result.user.id, `User ${result.user.email} registered`, undefined, req.ip, req.get("user-agent"));
             res.status(201).json({
                 success: true,
@@ -100,17 +105,17 @@ class AuthController {
         }
     }
     static async getMe(req, res, next) {
-        res.status(200).json({
-            success: true,
-            message: "User profile retrieved successfully",
-            data: {
-                user: {
-                    id: req.user.id,
-                    email: req.user.email,
-                    role: req.user.role,
-                },
-            },
-        });
+        try {
+            const user = await auth_service_1.AuthService.getMe(req.user.id);
+            res.status(200).json({
+                success: true,
+                message: "User profile retrieved successfully",
+                data: { user },
+            });
+        }
+        catch (error) {
+            next(error);
+        }
     }
 }
 exports.AuthController = AuthController;

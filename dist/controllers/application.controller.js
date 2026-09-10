@@ -5,6 +5,7 @@ const prisma_1 = require("../config/prisma");
 const application_service_1 = require("../services/application.service");
 const auditLog_service_1 = require("../services/auditLog.service");
 const errorHandler_1 = require("../middleware/errorHandler");
+const query_util_1 = require("../utils/query.util");
 class ApplicationController {
     static async getMyApplication(req, res, next) {
         try {
@@ -66,14 +67,15 @@ class ApplicationController {
             const page = req.query.page ? parseInt(req.query.page, 10) : 1;
             const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
             const skip = (page - 1) * limit;
+            const cleanParams = (0, query_util_1.sanitizeQueryParams)(req.query);
             const where = {};
-            if (req.query.status)
-                where.status = req.query.status;
-            if (req.query.search) {
+            if (cleanParams.status)
+                where.status = cleanParams.status;
+            if (cleanParams.search) {
                 where.OR = [
-                    { user: { firstName: { contains: req.query.search, mode: "insensitive" } } },
-                    { user: { lastName: { contains: req.query.search, mode: "insensitive" } } },
-                    { user: { email: { contains: req.query.search, mode: "insensitive" } } },
+                    { user: { firstName: { contains: cleanParams.search, mode: "insensitive" } } },
+                    { user: { lastName: { contains: cleanParams.search, mode: "insensitive" } } },
+                    { user: { email: { contains: cleanParams.search, mode: "insensitive" } } },
                 ];
             }
             const [applications, total] = await Promise.all([
@@ -84,7 +86,6 @@ class ApplicationController {
                     orderBy: { createdAt: "desc" },
                     include: {
                         user: {
-                            select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
                             include: { studentProfile: true },
                         },
                         placement: true,

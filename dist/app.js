@@ -14,16 +14,20 @@ const errorHandler_1 = require("./middleware/errorHandler");
 const logger_1 = require("./config/logger");
 const swagger_1 = require("./config/swagger");
 const app = (0, express_1.default)();
+app.set("trust proxy", 1);
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {
-        const allowedOrigins = env_1.env.corsOrigin
-            .split(",")
-            .map((o) => o.trim())
-            .filter(Boolean);
+        const allowedOrigins = [
+            ...env_1.env.corsOrigin
+                .split(",")
+                .map((o) => o.trim())
+                .filter(Boolean),
+            "https://advenwareacl.onrender.com",
+        ];
         console.log("CORS Origin:", origin);
         console.log("Allowed Origins:", allowedOrigins);
-        if (!origin) {
+        if (!origin || origin === "null") {
             return callback(null, true);
         }
         if (allowedOrigins.includes(origin)) {

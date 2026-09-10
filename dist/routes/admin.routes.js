@@ -4,6 +4,8 @@ const express_1 = require("express");
 const admin_controller_1 = require("../controllers/admin.controller");
 const auth_1 = require("../middleware/auth");
 const adminAuth_1 = require("../middleware/adminAuth");
+const validation_1 = require("../middleware/validation");
+const admin_schema_1 = require("../schemas/admin.schema");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -144,6 +146,16 @@ router.get("/audit-logs", admin_controller_1.AdminController.getAuditLogs);
 router.get("/settings", admin_controller_1.AdminController.getSystemSettings);
 /**
  * @swagger
+ * /admin/dashboard/charts:
+ *   get:
+ *     summary: Get dashboard chart data
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/dashboard/charts", admin_controller_1.AdminController.getDashboardCharts);
+/**
+ * @swagger
  * /admin/settings/{key}:
  *   put:
  *     summary: Update system setting
@@ -152,5 +164,23 @@ router.get("/settings", admin_controller_1.AdminController.getSystemSettings);
  *       - bearerAuth: []
  */
 router.put("/settings/:key", admin_controller_1.AdminController.updateSystemSetting);
+/**
+ * /admin/agents:
+ *   post:
+ *     summary: Create a new agent
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/agents", auth_1.authenticate, (0, adminAuth_1.requireAdmin)("SUPER_ADMIN"), (0, validation_1.validate)(admin_schema_1.CreateAgentSchema), admin_controller_1.AdminController.createAgent);
+/**
+ * /admin/students:
+ *   post:
+ *     summary: Create a new student
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/students", auth_1.authenticate, (0, adminAuth_1.requireAdmin)("SUPER_ADMIN"), (0, validation_1.validate)(admin_schema_1.CreateStudentSchema), admin_controller_1.AdminController.createStudent);
 exports.default = router;
 //# sourceMappingURL=admin.routes.js.map
