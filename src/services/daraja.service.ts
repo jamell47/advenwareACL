@@ -53,6 +53,15 @@ export class DarajaService {
       throw new APIError("Daraja shortcode or passkey not configured", 500, "DARAJA_NOT_CONFIGURED");
     }
 
+    // Normalize phone number to Safaricom format: 254XXXXXXXXX (12 digits, no +)
+    let cleanedPhone = String(phoneNumber).replace(/\+/g, "").replace(/\s/g, "").replace(/-/g, "");
+    if (cleanedPhone.startsWith("0")) {
+      cleanedPhone = "254" + cleanedPhone.slice(1);
+    }
+    if (cleanedPhone.length === 9 && (cleanedPhone.startsWith("7") || cleanedPhone.startsWith("1"))) {
+      cleanedPhone = "254" + cleanedPhone;
+    }
+
     const accessToken = await this.getAccessToken();
 
     const timestamp = new Date()
@@ -72,9 +81,9 @@ export class DarajaService {
           Password: password,
           Timestamp: timestamp,
           TransactionType: "CustomerPayBillOnline",
-          PartyA: phoneNumber,
+          PartyA: cleanedPhone,
           PartyB: env.darajaShortcode,
-          PhoneNumber: phoneNumber,
+          PhoneNumber: cleanedPhone,
           CallBackURL: env.darajaCallbackUrl,
           AccountReference: accountReference,
           TransactionDesc: transactionDesc,
