@@ -3,6 +3,7 @@ import { StudentController } from "../controllers/student.controller";
 import { authenticate } from "../middleware/auth";
 import { validate } from "../middleware/validation";
 import { UpdateStudentProfileSchema } from "../schemas/student.schema";
+import { upload } from "../middleware/upload.middleware";
 
 const router = Router();
 
@@ -34,5 +35,16 @@ router.get("/me", authenticate, StudentController.getMyProfile);
  *       - bearerAuth: []
  */
 router.patch("/me", authenticate, validate(UpdateStudentProfileSchema), StudentController.updateMyProfile);
+
+/**
+ * @swagger
+ * /students/me/profile-image:
+ *   post:
+ *     summary: Upload profile image for the authenticated student
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/me/profile-image", authenticate, upload.single("profileImage"), StudentController.uploadProfileImage);
 
 export default router;

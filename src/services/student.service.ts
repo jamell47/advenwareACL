@@ -1,5 +1,7 @@
 import { prisma } from "../config/prisma";
 import { APIError } from "../middleware/errorHandler";
+import { StorageService } from "../utils/storage.util";
+import { AuditLogService } from "./auditLog.service";
 
 interface UpdateProfileData {
   firstName?: string;
@@ -122,6 +124,48 @@ export class StudentService {
         studentProfile: true,
       },
     });
+
+    return formatProfile(updatedUser);
+  }
+
+  static async uploadProfileImage(userId: string, file: Express.Multer.File): Promise<any> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        studentProfile: true,
+      },
+    });
+
+    if (!user) {
+      throw new APIError("User not found", 404, "USER_NOT_FOUND");
+    }
+
+    if (!file) {
+      throw new APIError("No file provided", 400, "NO_FILE");
+    }
+
+    if (user.profileImage) {
+      await StorageService.deleteFile(user.profileImage);
+    }
+
+    const folder = `students/${userId}`;
+    const { url } = await StorageService.uploadFile(file, folder);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { profileImage: url },
+      include: {
+        studentProfile: true,
+      },
+    });
+
+    await AuditLogService.log(
+      "STUDENT_PROFILE_IMAGE_UPLOADED",
+      userId,
+      "Student",
+      userId,
+      `Profile image uploaded for student ${user.email}`,
+    );
 
     return formatProfile(updatedUser);
   }
