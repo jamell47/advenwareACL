@@ -1,20 +1,7 @@
-import { existsSync, mkdirSync } from "fs";
 import multer from "multer";
 import { APIError } from "./errorHandler";
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = "uploads/tmp";
-    if (!existsSync(uploadDir)) {
-      mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.originalname}`;
-    cb(null, uniqueSuffix);
-  },
-});
+const storage = multer.memoryStorage();
 
 const ALLOWED_EXTENSIONS = [
   ".pdf",

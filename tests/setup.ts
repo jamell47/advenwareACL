@@ -12,10 +12,16 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-  const tables = await prisma.$queryRawUnsafe<{ tablename: string }[]>`
-    SELECT tablename FROM pg_tables WHERE schemaname = 'public';
-  `;
-  for (const table of tables) {
-    await prisma.$executeRawUnsafe(`DELETE FROM ${table.tablename}`);
+  try {
+    await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
+    const tables = await prisma.$queryRaw<{ name: string }[]>`
+      SELECT table_name AS name FROM information_schema.tables WHERE table_schema = DATABASE();
+    `;
+    for (const table of tables) {
+      await prisma.$executeRawUnsafe(`DELETE FROM \`${table.name}\``);
+    }
+    await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
+  } catch (e) {
+    console.warn("Cleanup skipped:", e);
   }
 });

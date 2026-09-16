@@ -5,27 +5,22 @@ import { APIError } from "../middleware/errorHandler";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
+import fsp from "fs/promises";
 
 const logger = createLogger("storage-service");
 
 export interface UploadResult {
   url: string;
   key: string;
+  path: string;
+  filename: string;
 }
 
 export class StorageService {
-  /**
-   * Returns true when production persistent storage (S3-compatible) is configured.
-   */
   static isCloudStorage(): boolean {
     return !!(env.storageEndpoint && (env.storageEndpoint.startsWith("http://") || env.storageEndpoint.startsWith("https://")));
   }
 
-  /**
-   * Build the public-facing URL for a stored file.
-   * - Cloud storage: returns the full S3 URL (e.g. https://bucket.s3.amazonaws.com/folder/file)
-   * - Local storage: returns the relative path (e.g. /uploads/folder/file)
-   */
   static buildUrl(storagePath: string): string {
     if (this.isCloudStorage()) {
       const base = env.storageEndpoint!.replace(/\/$/, "");
@@ -34,11 +29,6 @@ export class StorageService {
     return `/uploads/${storagePath}`;
   }
 
-  /**
-   * Upload a file to storage.
-   * If storageEndpoint is set and starts with http:// or https://, use S3-compatible PUT.
-   * Otherwise, write to local filesystem under uploads/{folder}/{filename}.
-   */
   static async uploadFile(file: Express.Multer.File, folder: string): Promise<UploadResult> {
     const ext = path.extname(file.originalname) || "";
     const uniqueName = `${crypto.randomUUID()}${ext}`;
@@ -66,24 +56,18 @@ export class StorageService {
         throw new APIError("Failed to upload file to storage", 500, "STORAGE_UPLOAD_FAILED");
       }
 
-      return { url, key: storagePath };
+      return { url, key: storagePath, path: url, filename: file.originalname };
     }
 
-    // Local filesystem upload
     const uploadDir = path.join(process.cwd(), "uploads", folder);
-    await fs.mkdir(uploadDir, { recursive: true });
+    await fsp.mkdir(uploadDir, { recursive: true });
     const fullPath = path.join(uploadDir, uniqueName);
-    await fs.writeFile(fullPath, file.buffer);
+    await fsp.writeFile(fullPath, file.buffer);
 
-    return { url: `/uploads/${storagePath}`, key: storagePath };
+    return { url: `/uploads/${storagePath}`, key: storagePath, path: `/uploads/${storagePath}`, filename: file.originalname };
   }
 
-  /**
-   * Delete a file from storage.
-   * Accepts either a storage key or a full URL/path.
-   */
   static async deleteFile(identifier: string): Promise<void> {
-    // Normalize: strip leading /uploads/ if present
     let key = identifier;
     if (key.startsWith("/uploads/")) {
       key = key.replace(/^\/uploads\//, "");
@@ -92,19 +76,16 @@ export class StorageService {
     if (this.isCloudStorage()) {
       const url = this.buildUrl(key);
       try {
-        await axios.delete(url, {
-          timeout: 30000,
-        });
+        await axios.delete(url, { timeout: 30000 });
       } catch (err: any) {
         logger.warn("S3 delete failed (ignored)", { error: err.message, key });
       }
       return;
     }
 
-    // Local filesystem delete
     const fullPath = path.join(process.cwd(), "uploads", key);
     try {
-      await fs.unlink(fullPath);
+      await fsp.unlink(fullPath);
     } catch (err: any) {
       if (err.code !== "ENOENT") {
         logger.warn("Local file delete failed", { error: err.message, fullPath });
@@ -112,39 +93,31 @@ export class StorageService {
     }
   }
 
-  /**
-   * Stream a file from storage to an Express response.
-   * Works for both cloud and local storage.
-   * Returns true if the file was found and streamed, false otherwise.
-   */
-  static async streamFile(res: any, storagePath: string): Promise<boolean> {
+  static async streamFile(storagePath: string): Promise<{ stream: NodeJS.ReadableStream; mimeType: string; stat?: fs.Stats } | null> {
     if (this.isCloudStorage()) {
       const url = this.buildUrl(storagePath);
       try {
-        const response = await axios.get(url, {
+        const response: AxiosResponse = await axios.get(url, {
           responseType: "stream",
           timeout: 60000,
         });
-
-        res.set("Content-Type", response.headers["content-type"] || "application/octet-stream");
-        response.data.pipe(res);
-        return true;
+        return {
+          stream: response.data,
+          mimeType: String(response.headers["content-type"] || "application/octet-stream"),
+        };
       } catch (err: any) {
         logger.error("Cloud file stream failed", { error: err.message, url });
-        return false;
+        return null;
       }
     }
 
-    // Local filesystem
     const fullPath = path.join(process.cwd(), "uploads", storagePath);
     if (!fs.existsSync(fullPath)) {
-      return false;
+      return null;
     }
 
     const stat = fs.statSync(fullPath);
-    res.set("Content-Type", "application/octet-stream");
-    res.set("Content-Length", stat.size);
-    fs.createReadStream(fullPath).pipe(res);
-    return true;
+    const stream = fs.createReadStream(fullPath);
+    return { stream, mimeType: "application/octet-stream", stat };
   }
 }

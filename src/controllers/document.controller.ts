@@ -55,7 +55,7 @@ export class DocumentController {
 
       await NotificationService.createNotification({
         userId: req.user!.id,
-        type: "DOCUMENT_SUBMITTED",
+        type: "APPLICATION_RECEIVED",
         title: "Document Uploaded",
         message: `Your ${file.originalname} has been uploaded and is pending review.`,
         data: { documentId: document.id },

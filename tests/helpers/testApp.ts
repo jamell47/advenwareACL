@@ -1,10 +1,10 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import routes from "../src/routes";
-import { errorHandler, notFound } from "../src/middleware/errorHandler";
-import { env } from "../src/config/env";
-import { setupSwagger } from "../src/config/swagger";
+import routes from "../../src/routes";
+import { errorHandler, notFound } from "../../src/middleware/errorHandler";
+import { env } from "../../src/config/env";
+import { setupSwagger } from "../../src/config/swagger";
 
 export function createTestApp() {
   const app = express();

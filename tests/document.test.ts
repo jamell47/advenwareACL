@@ -1,5 +1,5 @@
 import request from "supertest";
-import { createTestApp, TEST_USER } from "../helpers/testApp";
+import { createTestApp, TEST_USER } from "./helpers/testApp";
 import { prisma } from "../src/config/prisma";
 
 const app = createTestApp();
@@ -10,7 +10,12 @@ describe("Document Management", () => {
   beforeAll(async () => {
     const existing = await prisma.user.findUnique({ where: { email: TEST_USER.email } });
     if (existing) {
+      await prisma.documentVersion.deleteMany({ where: { document: { userId: existing.id } } });
+      await prisma.document.deleteMany({ where: { userId: existing.id } });
       await prisma.studentProfile.deleteMany({ where: { userId: existing.id } });
+      await prisma.attachmentApplication.deleteMany({ where: { userId: existing.id } });
+      await prisma.auditLog.deleteMany({ where: { userId: existing.id } });
+      await prisma.notification.deleteMany({ where: { userId: existing.id } });
       await prisma.user.delete({ where: { id: existing.id } });
     }
 
@@ -43,6 +48,8 @@ describe("Document Management", () => {
         .field("type", "NATIONAL_ID")
         .attach("file", Buffer.from("fake-pdf-content"), "test_id.pdf");
 
+      console.log("Upload response status:", response.status);
+      console.log("Upload response body:", JSON.stringify(response.body, null, 2));
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.data.type).toBe("NATIONAL_ID");

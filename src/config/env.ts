@@ -21,6 +21,7 @@ interface EnvConfig {
   storageAccessKey: string;
   storageSecretKey: string;
   storageBucket: string;
+  storageRegion: string;
   uploadMaxSizeMb: number;
   whatsappSupportNumber: string;
   supportEmail: string;

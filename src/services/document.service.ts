@@ -232,10 +232,6 @@ export class DocumentService {
   }
 
   static async downloadDocument(userId: string, documentId: string, versionId?: string): Promise<{ stream: any; filename: string; mimeType: string; stat: any }> {
-    const filePath: string | null = null;
-    const filename = "document";
-    const mimeType = "application/octet-stream";
-
     if (versionId) {
       const version = await prisma.documentVersion.findFirst({
         where: { id: versionId, document: { userId } },
@@ -253,7 +249,7 @@ export class DocumentService {
       return {
         stream: result.stream,
         filename: version.fileName,
-        mimeType: version.mimeType,
+        mimeType: result.mimeType,
         stat: result.stat,
       };
     }
@@ -278,7 +274,7 @@ export class DocumentService {
     return {
       stream: result.stream,
       filename: document.fileName,
-      mimeType: document.mimeType,
+      mimeType: result.mimeType,
       stat: result.stat,
     };
   }

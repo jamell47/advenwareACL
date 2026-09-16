@@ -7,7 +7,10 @@ import routes from "./routes";
 import { env } from "./config/env";
 import { errorHandler, notFound } from "./middleware/errorHandler";
 import { morganMiddleware } from "./config/logger";
+import { createLogger } from "./utils/logger.util";
 import { setupSwagger } from "./config/swagger";
+
+const logger = createLogger("app");
 
 const app = express();
 
@@ -71,14 +74,20 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.get("/uploads/:storagePath(*)", async (req, res) => {
   try {
     const storagePath = req.params.storagePath;
-    const served = await StorageService.streamFile(res, storagePath);
-    if (!served) {
+    const result = await StorageService.streamFile(storagePath);
+    if (!result) {
       res.status(404).json({
         success: false,
         message: "File not found",
         error: { code: "FILE_NOT_FOUND" },
       });
+      return;
     }
+    res.set("Content-Type", result.mimeType);
+    if (result.stat) {
+      res.set("Content-Length", result.stat.size);
+    }
+    result.stream.pipe(res);
   } catch (err) {
     logger.error("File serving error", { error: (err as Error).message, path: req.params.storagePath });
     res.status(500).json({
