@@ -49,11 +49,11 @@ export const validate = (schema: ZodType) => {
         console.error("Body keys:", Object.keys(req.body || {}));
         console.error("Body values:", JSON.stringify(req.body));
         console.error("Files:", req.file ? "yes" : "no");
-        const schemaErrors = (parsed.error && parsed.error.errors) || (bodyParsed.error && bodyParsed.error.errors) || (queryParsed.error && queryParsed.error.errors);
+        const schemaErrors = (isMultipart && bodyParsed.error && bodyParsed.error.errors) || (parsed.error && parsed.error.errors) || (bodyParsed.error && bodyParsed.error.errors) || (queryParsed.error && queryParsed.error.errors);
         console.error("Schema errors:", JSON.stringify(schemaErrors));
       }
 
-      const errors = (parsed.error && parsed.error.errors) || (bodyParsed.error && bodyParsed.error.errors) || (queryParsed.error && queryParsed.error.errors) || [];
+      const errors = (isMultipart && bodyParsed.error && bodyParsed.error.errors) || (parsed.error && parsed.error.errors) || (bodyParsed.error && bodyParsed.error.errors) || (queryParsed.error && queryParsed.error.errors) || [];
       const message = errors.map((e: any) => {
         const path = e.path?.length === 1 ? String(e.path[0]) : "body";
         return `${path}: ${e.message}`;

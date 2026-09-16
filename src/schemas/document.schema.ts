@@ -4,7 +4,12 @@ import { DocumentType, DocumentStatus } from "@prisma/client";
 export const UploadDocumentSchema = z.object({
   type: z.nativeEnum(DocumentType),
   customTypeName: z.string().max(200).optional(),
-  isRequired: z.boolean().optional(),
+  // Multipart text fields always arrive as strings ("true"/"false"),
+  // so coerce them to real booleans; real booleans pass through untouched.
+  isRequired: z.preprocess(
+    (v) => (typeof v === "string" ? v.trim().toLowerCase() === "true" : v),
+    z.boolean().optional(),
+  ),
 }).passthrough();
 
 export const DocumentQueryParamsSchema = z.object({
