@@ -66,6 +66,29 @@ app.use(limiter);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+// File serving route that works for both local and cloud storage
+// This ensures uploaded files are always accessible regardless of storage backend
+app.get("/uploads/:storagePath(*)", async (req, res) => {
+  try {
+    const storagePath = req.params.storagePath;
+    const served = await StorageService.streamFile(res, storagePath);
+    if (!served) {
+      res.status(404).json({
+        success: false,
+        message: "File not found",
+        error: { code: "FILE_NOT_FOUND" },
+      });
+    }
+  } catch (err) {
+    logger.error("File serving error", { error: (err as Error).message, path: req.params.storagePath });
+    res.status(500).json({
+      success: false,
+      message: "Failed to serve file",
+      error: { code: "FILE_SERVE_ERROR" },
+    });
+  }
+});
+
 app.get("/", (req, res) => {
   res.json({
     success: true,
