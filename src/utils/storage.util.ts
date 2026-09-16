@@ -21,6 +21,15 @@ export class StorageService {
     return !!(env.storageEndpoint && (env.storageEndpoint.startsWith("http://") || env.storageEndpoint.startsWith("https://")));
   }
 
+  static ensureUploadDir(): void {
+    if (this.isCloudStorage()) return;
+    const uploadRoot = path.join(process.cwd(), "uploads");
+    if (!fs.existsSync(uploadRoot)) {
+      fs.mkdirSync(uploadRoot, { recursive: true });
+    }
+    logger.info("Upload directory ready", { uploadRoot });
+  }
+
   static buildUrl(storagePath: string): string {
     if (this.isCloudStorage()) {
       const base = env.storageEndpoint!.replace(/\/$/, "");

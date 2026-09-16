@@ -8,6 +8,7 @@ import { env } from "./config/env";
 import { errorHandler, notFound } from "./middleware/errorHandler";
 import { morganMiddleware } from "./config/logger";
 import { createLogger } from "./utils/logger.util";
+import { StorageService } from "./utils/storage.util";
 import { setupSwagger } from "./config/swagger";
 
 const logger = createLogger("app");
