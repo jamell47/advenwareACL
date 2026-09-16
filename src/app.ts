@@ -86,7 +86,7 @@ app.get("/uploads/:storagePath(*)", async (req, res) => {
     }
     res.set("Content-Type", result.mimeType);
     if (result.stat) {
-      res.set("Content-Length", result.stat.size);
+      res.set("Content-Length", String(result.stat.size));
     }
     result.stream.pipe(res);
   } catch (err) {
